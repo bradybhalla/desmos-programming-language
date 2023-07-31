@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <script src="calculator.js"></script>
+        <style>
+            html, body {
+                padding: 0px;
+                margin: 0px;
+            }
+
+            #calculator {
+                width: 100vw;
+                height: 100vh;
+            }
+        </style>
+    </head>
+
+    <body>
+        <div id="calculator"></div>
+        <script>
+            let elt = document.getElementById("calculator");
+            let calculator = Desmos.GraphingCalculator(elt);
+        </script>
+    </body>
+
+</html>
