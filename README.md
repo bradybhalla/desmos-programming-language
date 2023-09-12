@@ -6,6 +6,7 @@ Compile a simple programming language to run in [Desmos graphing calculator](htt
 
 1. Clone the repository
 2. `pip install -e ".[dev]"`
+3. Ensure that Google Chrome is installed
 
 ## Usage
 

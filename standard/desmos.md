@@ -10,3 +10,7 @@
 
 ## Program expressions
 - id's must be numerical
+
+## Exit codes
+- The exit code is the value of `D_{one}` once it is `>= 0`
+- An exit code of `0` means there is no error

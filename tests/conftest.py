@@ -2,34 +2,35 @@ from json import loads
 from pathlib import Path
 from time import sleep
 from typing import Literal, NamedTuple
+
+import pytest
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
-import pytest
 
-headless = False
-
+from desmos_compiler.generate_desmos import DesmosExpr, generate_js
 
 DESMOS_PATH = Path("../desmos/index.html").resolve()
 
 CHROME_OPTIONS = webdriver.ChromeOptions()
-if headless:
-    CHROME_OPTIONS.add_argument("--headless")
+# CHROME_OPTIONS.add_argument("--headless")
 
 MAX_STEPS = 1000
 
-PROG_SETUP_DELAY = 0.5
-PROG_ACTION_DELAY = 0.1
+PROG_SETUP_DELAY = 0.05
+PROG_ACTION_DELAY = 0.05
+
 
 @pytest.fixture(scope="module")
 def driver():
+    """
+    Fixture to get webdriver
+    """
     driver = webdriver.Chrome(
         service=Service(ChromeDriverManager().install()), options=CHROME_OPTIONS
     )
     yield driver
-    if not headless:
-        sleep(1)
     driver.close()
 
 
@@ -42,14 +43,34 @@ def run_program(
     *,
     driver: webdriver.Chrome,
     desmos_js: str,
-    input: str | None,
+    program_input: str | None = None,
     output_type: Literal["numeric", "list"] = "numeric",
 ) -> ProgramOutput:
+    """
+    Run the Desmos program created by `desmos_js`.
+
+    Parameters:
+        - `driver`: the webdriver to use
+        - `desmos_js`: javascript to generate desmos expressions
+        - `program_input`: sets the "in" expression if provided
+        - `output_type`: either "numeric" or "list" depending on the type of the "out" expression
+
+    Returns `NamedTuple` with:
+        - `output`: the final value of the "out" expression
+        - `exit_code`: the final value of the "done" expression (>= 0)
+    """
     driver.get("file://" + str(DESMOS_PATH))
 
     # create expressions
     driver.execute_script(desmos_js)
     sleep(PROG_SETUP_DELAY)
+
+    # set input if provided
+    if program_input is not None:
+        driver.execute_script(
+            generate_js([DesmosExpr(id="in", latex=f"I_{{n}} = {program_input}")])
+        )
+        sleep(PROG_ACTION_DELAY)
 
     # create variables to track output and if program is done
     get_expr_value = lambda name, var_type: loads(
