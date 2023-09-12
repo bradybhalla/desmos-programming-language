@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "desmos_compiler"
+authors = [
+    {name = "Brady Bhalla"},
+]
+description = ""
+readme = "README.md"
+requires-python = ">=3.10"
+keywords = []
+classifiers = [
+    "Programming Language :: Python :: 3",
+]
+dependencies = []
+dynamic = ["version"]
+
+[project.optional-dependencies]
+automation = ["selenium >= 4.0", "webdriver-manager"]
+dev = ["pytest", "desmos_compiler[automation]"]
+
+[tool.setuptools]
+packages = ["desmos_compiler"]
