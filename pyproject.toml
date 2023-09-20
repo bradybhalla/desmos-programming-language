@@ -18,7 +18,7 @@ dependencies = []
 dynamic = ["version"]
 
 [project.optional-dependencies]
-automation = ["selenium >= 4.0", "webdriver-manager"]
+automation = ["selenium >= 4.0"]
 dev = ["pytest", "desmos_compiler[automation]"]
 
 [tool.setuptools]

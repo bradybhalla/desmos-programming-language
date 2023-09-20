@@ -7,14 +7,15 @@ import pytest
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
-from webdriver_manager.chrome import ChromeDriverManager
 
-from desmos_compiler.generate_desmos import DesmosExpr, generate_js
+from desmos_compiler.desmos_implementation import DesmosExpr, DesmosImplementation
 
-DESMOS_PATH = Path("../desmos/index.html").resolve()
+PROJECT_ROOT = Path("..").resolve()
+DESMOS_PATH = PROJECT_ROOT / "desmos/index.html"
+CHROMEDRIVER_PATH = PROJECT_ROOT / "chromedriver"
 
 CHROME_OPTIONS = webdriver.ChromeOptions()
-# CHROME_OPTIONS.add_argument("--headless")
+CHROME_OPTIONS.add_argument("--headless")
 
 MAX_STEPS = 1000
 
@@ -28,7 +29,7 @@ def driver():
     Fixture to get webdriver
     """
     driver = webdriver.Chrome(
-        service=Service(ChromeDriverManager().install()), options=CHROME_OPTIONS
+        service=Service(executable_path=str(CHROMEDRIVER_PATH)), options=CHROME_OPTIONS
     )
     yield driver
     driver.close()
@@ -39,7 +40,7 @@ class ProgramOutput(NamedTuple):
     exit_code: int
 
 
-def run_program(
+def run_program_js(
     *,
     driver: webdriver.Chrome,
     desmos_js: str,
@@ -68,7 +69,9 @@ def run_program(
     # set input if provided
     if program_input is not None:
         driver.execute_script(
-            generate_js([DesmosExpr(id="in", latex=f"I_{{n}} = {program_input}")])
+            DesmosImplementation.generate_js(
+                [DesmosExpr(id="in", latex=f"I_{{n}} = {program_input}")]
+            )
         )
         sleep(PROG_ACTION_DELAY)
 
