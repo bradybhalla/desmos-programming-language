@@ -15,7 +15,7 @@ DESMOS_PATH = PROJECT_ROOT / "desmos/index.html"
 CHROMEDRIVER_PATH = PROJECT_ROOT / "chromedriver"
 
 CHROME_OPTIONS = webdriver.ChromeOptions()
-CHROME_OPTIONS.add_argument("--headless")
+# CHROME_OPTIONS.add_argument("--headless")
 
 MAX_STEPS = 1000
 
@@ -36,7 +36,7 @@ def driver():
 
 
 class ProgramOutput(NamedTuple):
-    output: str
+    output: int | list[int]
     exit_code: int
 
 

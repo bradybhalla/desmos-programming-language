@@ -56,7 +56,7 @@ class Condition(NamedTuple):
     """
 
     condition: str
-    command: Command
+    commands: list[Command]
 
 
 class ConditionalCommand(Command):
@@ -68,12 +68,25 @@ class ConditionalCommand(Command):
         return "{ " + ", ".join(res) + " }"
 
     def get_error(self, line_prog) -> str:
-        return ", ".join(
+        res = []
+
+        if len(self.conditions) < 1:
+            res.append("There must be at least one condition")
+        for i in self.conditions:
+            if len(i.commands) < 1:
+                res.append("Conditions must have at least one command")
+
+        res += list(
             filter(
                 lambda x: x != "",
-                [cmd.get_error(line_prog) for _, cmd in self.conditions],
+                [
+                    cmd.get_error(line_prog)
+                    for condition in self.conditions
+                    for cmd in condition.commands
+                ],
             )
         )
+        return ", ".join(res)
 
 
 class IntermediateLineProgram:

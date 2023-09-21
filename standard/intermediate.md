@@ -2,7 +2,6 @@
 
 - Made up of registers and indexed lines
 - The current line is tracked in a special register which we will call `L`
-- If there is no `GotoLine` command in a line, the `L` will be incremented
 - The program begins on the first line (`L=0`)
 - The program exits when `L` does not correspond to an existing line
 

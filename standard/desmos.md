@@ -9,7 +9,7 @@
 | done | `D_{one}`     | Initialized `< 0`, exit when `>= 0`      |  integer
 
 ## Program expressions
-- id's must be numerical
+- id's must be numerical (TODO: maybe don't have this)
 
 ## Exit codes
 - The exit code is the value of `D_{one}` once it is `>= 0`
