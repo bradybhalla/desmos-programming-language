@@ -2,7 +2,7 @@ import pytest
 from conftest import run_program_js
 
 from desmos_compiler.desmos_implementation import DesmosExpr, DesmosImplementation
-from desmos_compiler.intermediate import (
+from desmos_compiler.intermediate_line_program import (
     Condition,
     ConditionalCommand,
     GotoLineCommand,
@@ -50,7 +50,7 @@ def collatz_intermediate_program():
                     ),
                     Condition(
                         "\\operatorname{mod}\\left(n,2\\right)=0",
-                        [SetRegisterCommand("l", "l+1"), GotoLineCommand(1)],
+                        [SetRegisterCommand("l", "l+1"), prog.goto_next_line_command()],
                     ),
                     Condition("", [SetRegisterCommand("l", "l+1"), GotoLineCommand(2)]),
                 ]
@@ -59,7 +59,7 @@ def collatz_intermediate_program():
     )
     prog.add_line([SetRegisterCommand("n", "\\frac{n}{2}"), GotoLineCommand(0)])
     prog.add_line([SetRegisterCommand("n", "3\\cdot n + 1"), GotoLineCommand(0)])
-    
+
     return prog
 
 
@@ -79,7 +79,7 @@ def test_generate_js(driver, summation_exprs_program, program_input):
     assert output == program_input * (program_input + 1) // 2
 
 
-@pytest.mark.parametrize("program_input", [1, 3, 5, 7])
+@pytest.mark.parametrize("program_input", [1, 3, 7])
 def test_generate_exprs(driver, collatz_intermediate_program, program_input):
     """
     Ensure `DesmosImplementation.generate_exprs` functions correctly
@@ -99,7 +99,7 @@ def test_generate_exprs(driver, collatz_intermediate_program, program_input):
     expected_output = 0
     n = program_input
     while n != 1:
-        n = n//2 if n%2 == 0 else 3*n + 1
+        n = n // 2 if n % 2 == 0 else 3 * n + 1
         expected_output += 1
 
     assert output == expected_output

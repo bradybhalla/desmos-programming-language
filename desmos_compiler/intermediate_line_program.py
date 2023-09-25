@@ -107,16 +107,26 @@ class IntermediateLineProgram:
 
         self.registers[name] = initial_value
 
-    def add_line(self, commands: list[Command]) -> int:
+    def add_line(self, commands: list[Command]):
         """
         Add a line to the program.  A line consists of a list of
         commands which are run when the line pointer is at its
         index.
-
-        Returns the index of the new line.
         """
         self.lines.append(commands)
-        return len(commands) - 1
+        return len(self.lines) - 1
+
+    def next_line_index(self) -> int:
+        """
+        Return the index of the line which will be added next
+        """
+        return len(self.lines)
+
+    def goto_next_line_command(self) -> GotoLineCommand:
+        """
+        Returns a command which goes to the next line after a line is added
+        """
+        return GotoLineCommand(self.next_line_index() + 1)
 
     def __repr__(self):
         res = []

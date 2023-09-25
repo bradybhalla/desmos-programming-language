@@ -1,6 +1,6 @@
 import pytest
 
-from desmos_compiler.intermediate import (
+from desmos_compiler.intermediate_line_program import (
     ConditionalCommand,
     GotoLineCommand,
     IntermediateLineProgram,
@@ -37,7 +37,7 @@ def broken_program():
         ]
     )
     prog.add_line([ConditionalCommand([]), ConditionalCommand([Condition("", [])])])
-    
+
     return prog
 
 
@@ -83,7 +83,7 @@ def test_errors(broken_program: IntermediateLineProgram):
     # There should be no errors after they are fixed
     broken_program.add_register("a", "0")
     [cond1, cond2] = broken_program.lines[3]
-    cond1.conditions.append(Condition("", [GotoLineCommand(2)])) #pyright: ignore
-    cond2.conditions[0].commands.append(GotoLineCommand(2)) #pyright: ignore
+    cond1.conditions.append(Condition("", [GotoLineCommand(2)]))  # pyright: ignore
+    cond2.conditions[0].commands.append(GotoLineCommand(2))  # pyright: ignore
 
     assert broken_program.get_errors() == ""

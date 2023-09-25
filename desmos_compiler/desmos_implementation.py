@@ -1,4 +1,4 @@
-from desmos_compiler.intermediate import (
+from desmos_compiler.intermediate_line_program import (
     Command,
     Condition,
     ConditionalCommand,
