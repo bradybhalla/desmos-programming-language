@@ -1,6 +1,7 @@
 import pytest
 
 from desmos_compiler.intermediate_line_program import (
+    Command,
     ConditionalCommand,
     GotoLineCommand,
     IntermediateLineProgram,
@@ -87,3 +88,26 @@ def test_errors(broken_program: IntermediateLineProgram):
     cond2.conditions[0].commands.append(GotoLineCommand(2))  # pyright: ignore
 
     assert broken_program.get_errors() == ""
+
+def test_line_indices(broken_program: IntermediateLineProgram):
+    """
+    Ensure that methods involving line index tracking function correctly.
+    """
+    # adding a line should return its index
+    line: list[Command] = [GotoLineCommand(0)]
+    idx = broken_program.add_line(line)
+    assert broken_program.lines[idx] == line
+
+    # next_line_index should be the index of the next line to be added
+    line2: list[Command] = [GotoLineCommand(1)]
+    idx = broken_program.next_line_index()
+    broken_program.add_line(line2)
+    assert broken_program.lines[idx] == line2
+
+    # goto_next_line_command should return a command which goes
+    # to the next line after the current line is added
+    cmd = broken_program.goto_next_line_command()
+    broken_program.add_line([cmd])
+    next_line_index = broken_program.add_line([GotoLineCommand(0)])
+    assert next_line_index == cmd.line
+    

@@ -94,7 +94,7 @@ class IntermediateLineProgramCompiler:
 
             case _:
                 raise NotImplementedError(
-                    f"statement of type {statement.__class__} is not matched"
+                    f"statement of type {type(statement).__name__} is not matched"
                 )
 
     def _node_to_intermediate_str(self, node: Node) -> str:
@@ -107,7 +107,7 @@ class IntermediateLineProgramCompiler:
                 return val
             case _:
                 raise NotImplementedError(
-                    f"node of type {node.__class__} is not matched"
+                    f"node of type {type(node).__name__} is not matched"
                 )
 
     def compile(self) -> IntermediateLineProgram:
@@ -121,36 +121,3 @@ class IntermediateLineProgramCompiler:
 
         return self.intermediate_program
 
-
-if __name__ == "__main__":
-    prog = Program(
-        [
-            Assignment(Variable("X"), DesmosLiteral("-1")),
-            ConditionalGroup(
-                [
-                    If(
-                        ConditionalExpr("I_{n}=1"),
-                        [Assignment(Variable("X"), DesmosLiteral("0"))],
-                    ),
-                    If(
-                        ConditionalExpr("I_{n}=2"),
-                        [Assignment(Variable("X"), DesmosLiteral("0"))],
-                    ),
-                ],
-                Assignment(Variable("X"), DesmosLiteral("I_{n}")),
-            ),
-            Assignment(Variable("O_{ut}"), DesmosLiteral("I_{n}+X")),
-            Assignment(Variable("D_{one}"), DesmosLiteral("0")),
-        ]
-    )
-
-    p = IntermediateLineProgramCompiler(prog)
-    print(p.compile())
-
-    from desmos_compiler.desmos_implementation import DesmosImplementation
-
-    print(
-        DesmosImplementation.generate_js(
-            DesmosImplementation.generate_exprs(p.intermediate_program)
-        )
-    )

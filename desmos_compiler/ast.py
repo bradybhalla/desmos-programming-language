@@ -1,9 +1,4 @@
-# desmos programming language to AST
-
 from abc import ABC, abstractmethod
-
-from desmos_compiler.intermediate_line_program import IntermediateLineProgram
-
 
 def indent(s: str, levels: int = 1):
     return "\n".join(["    " * levels + i for i in s.split("\n")])
@@ -74,34 +69,3 @@ class Program:
     def __init__(self, ast: list[Statement]):
         self.ast = ast
 
-
-if __name__ == "__main__":
-    prog = [
-        Assignment(Variable("x"), DesmosLiteral("1")),
-        ConditionalGroup(
-            [
-                If(
-                    ConditionalExpr("x==1"),
-                    [Assignment(Variable("x"), DesmosLiteral("2"))],
-                ),
-                If(
-                    ConditionalExpr("x==2"),
-                    [Assignment(Variable("x"), DesmosLiteral("3"))],
-                ),
-            ],
-            ConditionalGroup(
-                [
-                    If(
-                        ConditionalExpr("x==3"),
-                        [Assignment(Variable("y"), DesmosLiteral("x"))],
-                    )
-                ],
-                None,
-            ),
-        ),
-    ]
-
-    print("\n".join([str(i) for i in prog]))
-
-
-# there are some problems with types happening :(
