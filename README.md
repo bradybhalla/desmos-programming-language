@@ -1,5 +1,7 @@
 # desmos-compiler
 
+Still very much in progress.
+
 Compile a simple programming language to run in [Desmos graphing calculator](https://www.desmos.com/calculator).
 
 ## Setup
