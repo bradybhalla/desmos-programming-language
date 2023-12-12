@@ -78,7 +78,7 @@ def assemble(program: str):
         DesmosExpr("line", f"{LINE}=0"),
     ]
     register_expressions += [
-        DesmosExpr(f"reg{i}", make_substitutions(j, labels))
+        DesmosExpr(f"reg{i}", f"{make_substitutions(j, labels)}=0")
         for i, j in enumerate(registers)
     ]
     expr_expressions = [

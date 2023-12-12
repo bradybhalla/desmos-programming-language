@@ -8,7 +8,7 @@ from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 
-from desmos_compiler.desmos_implementation import DesmosExpr, DesmosImplementation
+from desmos_compiler.assembler import generate_js, DesmosExpr
 
 PROJECT_ROOT = Path("..").resolve()
 DESMOS_PATH = PROJECT_ROOT / "desmos/index.html"
@@ -69,7 +69,7 @@ def run_program_js(
     # set input if provided
     if program_input is not None:
         driver.execute_script(
-            DesmosImplementation.generate_js(
+            generate_js(
                 [DesmosExpr(id="in", latex=f"I_{{n}} = {program_input}")]
             )
         )

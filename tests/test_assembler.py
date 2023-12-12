@@ -1,16 +1,6 @@
 import pytest
 from conftest import run_program_js
-from desmos_compiler import assembler
-
-from desmos_compiler.desmos_implementation import DesmosExpr, DesmosImplementation
-from desmos_compiler.intermediate_line_program import (
-    Condition,
-    ConditionalCommand,
-    GotoLineCommand,
-    IntermediateLineProgram,
-    SetRegisterCommand,
-)
-
+from desmos_compiler.assembler import assemble, DesmosExpr, generate_js
 
 @pytest.fixture
 def summation_program():
@@ -29,8 +19,10 @@ def summation_program():
 @pytest.fixture
 def collatz_intermediate_program():
     return r"""
-    reg n = IN
-    reg l = 0
+    reg n
+    reg l
+
+    line n \to IN, l \to 0, NEXTLINE
 
     label main
     line \left\{n=1: (OUT \to l, DONE \to 0), \operatorname{mod}(n,2)=0: (l\to l+1, NEXTLINE), (l \to l+1, GOTO odd)\right\}
@@ -48,7 +40,7 @@ def test_generate_js(driver, summation_program, program_input):
     Ensure `DesmosImplementation.generate_js` functions correctly on
     a simple program created with a list of Desmos expressions
     """
-    js = assembler.generate_js(summation_program)
+    js = generate_js(summation_program)
     output, exit_code = run_program_js(
         driver=driver, desmos_js=js, program_input=program_input
     )
@@ -59,17 +51,12 @@ def test_generate_js(driver, summation_program, program_input):
 
 
 @pytest.mark.parametrize("program_input", [1, 3, 7])
-def test_generate_exprs(driver, collatz_intermediate_program, program_input):
+def test_assemble(driver, collatz_intermediate_program, program_input):
     """
     Ensure `DesmosImplementation.generate_exprs` functions correctly
-    on an intermediate program
+    on an assembly program
     """
-    # assert collatz_intermediate_program.get_errors() == ""
-
-    # exprs = DesmosImplementation.generate_exprs(collatz_intermediate_program)
-    js = assembler.assemble(collatz_intermediate_program)
-    with open("output.txt", "a") as f:
-        f.write(js)
+    js = assemble(collatz_intermediate_program)
 
     output, exit_code = run_program_js(
         driver=driver, desmos_js=js, program_input=program_input
