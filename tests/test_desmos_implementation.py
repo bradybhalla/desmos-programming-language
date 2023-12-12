@@ -1,5 +1,6 @@
 import pytest
 from conftest import run_program_js
+from desmos_compiler import assembler
 
 from desmos_compiler.desmos_implementation import DesmosExpr, DesmosImplementation
 from desmos_compiler.intermediate_line_program import (
@@ -12,7 +13,7 @@ from desmos_compiler.intermediate_line_program import (
 
 
 @pytest.fixture
-def summation_exprs_program():
+def summation_program():
     """
     Desmos expressions to calculate the sum 1 + 2 + ... + input
     """
@@ -27,49 +28,27 @@ def summation_exprs_program():
 
 @pytest.fixture
 def collatz_intermediate_program():
-    """
-    IntermediateLineProgram to calculate the length of a Collatz sequence
-    starting with the input
-    """
-    prog = IntermediateLineProgram()
-    prog.add_register("I_{n}", "1")
-    prog.add_register("O_{ut}", "1")
-    prog.add_register("D_{one}", "-1")
-    prog.add_register("n", "I_{n}")
-    prog.add_register("l", "0")
-    prog.add_line(
-        [
-            ConditionalCommand(
-                [
-                    Condition(
-                        "n=1",
-                        [
-                            SetRegisterCommand("O_{ut}", "l"),
-                            SetRegisterCommand("D_{one}", "0"),
-                        ],
-                    ),
-                    Condition(
-                        "\\operatorname{mod}\\left(n,2\\right)=0",
-                        [SetRegisterCommand("l", "l+1"), prog.goto_next_line_command()],
-                    ),
-                    Condition("", [SetRegisterCommand("l", "l+1"), GotoLineCommand(2)]),
-                ]
-            )
-        ]
-    )
-    prog.add_line([SetRegisterCommand("n", "\\frac{n}{2}"), GotoLineCommand(0)])
-    prog.add_line([SetRegisterCommand("n", "3\\cdot n + 1"), GotoLineCommand(0)])
+    return r"""
+    reg n = IN
+    reg l = 0
 
-    return prog
+    label main
+    line \left\{n=1: (OUT \to l, DONE \to 0), \operatorname{mod}(n,2)=0: (l\to l+1, NEXTLINE), (l \to l+1, GOTO odd)\right\}
+
+    line n \to \frac{n}{2}, GOTO main
+
+    label odd
+    line n \to 3\cdot n + 1, GOTO main
+    """
 
 
 @pytest.mark.parametrize("program_input", [2, 3, 10])
-def test_generate_js(driver, summation_exprs_program, program_input):
+def test_generate_js(driver, summation_program, program_input):
     """
     Ensure `DesmosImplementation.generate_js` functions correctly on
     a simple program created with a list of Desmos expressions
     """
-    js = DesmosImplementation.generate_js(summation_exprs_program)
+    js = assembler.generate_js(summation_program)
     output, exit_code = run_program_js(
         driver=driver, desmos_js=js, program_input=program_input
     )
@@ -85,10 +64,12 @@ def test_generate_exprs(driver, collatz_intermediate_program, program_input):
     Ensure `DesmosImplementation.generate_exprs` functions correctly
     on an intermediate program
     """
-    assert collatz_intermediate_program.get_errors() == ""
+    # assert collatz_intermediate_program.get_errors() == ""
 
-    exprs = DesmosImplementation.generate_exprs(collatz_intermediate_program)
-    js = DesmosImplementation.generate_js(exprs)
+    # exprs = DesmosImplementation.generate_exprs(collatz_intermediate_program)
+    js = assembler.assemble(collatz_intermediate_program)
+    with open("output.txt", "a") as f:
+        f.write(js)
 
     output, exit_code = run_program_js(
         driver=driver, desmos_js=js, program_input=program_input
