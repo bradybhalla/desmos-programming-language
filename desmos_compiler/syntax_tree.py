@@ -45,33 +45,22 @@ class Assignment(Statement):
         self.val = val
 
     def __repr__(self) -> str:
-        return f"{self.var} = {self.val}"
+        return f"{self.var} = {self.val};"
 
 
-# class ConditionalExpr(DesmosLiteral):
-#     pass
+class If(Statement):
+    def __init__(self, condition: Expression, contents: Statement, _else: Statement | None):
+        self.condition = condition
+        self.contents = contents
+        self._else = _else
 
-
-# class If(Node):
-#     def __init__(self, condition: ConditionalExpr, contents: list[Statement]):
-#         self.condition = condition
-#         self.contents = contents
-
-#     def __repr__(self) -> str:
-#         contents = indent(str("\n".join([str(i) for i in self.contents])))
-#         return f"if ( {self.condition} ){{\n{contents}\n}}"
-
-
-# class ConditionalGroup(Statement):
-#     def __init__(self, ifs: list[If], default: Statement | None):
-#         self.ifs = ifs
-#         self.default = default
-
-#     def __repr__(self) -> str:
-#         res = " else ".join([str(i) for i in self.ifs])
-#         if self.default is not None:
-#             res += " else {\n" + indent(str(self.default)) + "\n}"
-#         return res
+    def __repr__(self) -> str:
+        contents = indent(str(self.contents))
+        res = f"if ( {self.condition} ){{\n{contents}\n}}"
+        if self._else is not None:
+            else_contents = indent(str(self._else))
+            res += f" else {{\n{else_contents}\n}}"
+        return res
 
 
 class LiteralStatement(Statement):
@@ -87,4 +76,4 @@ class Group(Statement):
         self.statements = statements
 
     def __repr__(self) -> str:
-        return "\n".join(str(self.statements))
+        return "\n".join([str(i) for i in self.statements])
