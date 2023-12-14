@@ -3,7 +3,7 @@ from conftest import run_program_js
 from desmos_compiler.assembler import assemble, DesmosExpr, generate_js
 
 @pytest.fixture
-def summation_program():
+def summation_expression_program():
     """
     Desmos expressions to calculate the sum 1 + 2 + ... + input
     """
@@ -17,7 +17,7 @@ def summation_program():
 
 
 @pytest.fixture
-def collatz_intermediate_program():
+def collatz_assembly_program():
     return r"""
     reg n
     reg l
@@ -35,12 +35,12 @@ def collatz_intermediate_program():
 
 
 @pytest.mark.parametrize("program_input", [2, 3, 10])
-def test_generate_js(driver, summation_program, program_input):
+def test_generate_js(driver, summation_expression_program, program_input):
     """
     Ensure `DesmosImplementation.generate_js` functions correctly on
     a simple program created with a list of Desmos expressions
     """
-    js = generate_js(summation_program)
+    js = generate_js(summation_expression_program)
     output, exit_code = run_program_js(
         driver=driver, desmos_js=js, program_input=program_input
     )
@@ -51,12 +51,12 @@ def test_generate_js(driver, summation_program, program_input):
 
 
 @pytest.mark.parametrize("program_input", [1, 3, 7])
-def test_assemble(driver, collatz_intermediate_program, program_input):
+def test_assemble(driver, collatz_assembly_program, program_input):
     """
     Ensure `DesmosImplementation.generate_exprs` functions correctly
     on an assembly program
     """
-    js = assemble(collatz_intermediate_program)
+    js = assemble(collatz_assembly_program)
 
     output, exit_code = run_program_js(
         driver=driver, desmos_js=js, program_input=program_input

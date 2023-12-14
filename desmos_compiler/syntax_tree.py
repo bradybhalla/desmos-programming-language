@@ -63,6 +63,17 @@ class If(Statement):
         return res
 
 
+class While(Statement):
+    def __init__(self, condition: Expression, contents: Statement):
+        self.condition = condition
+        self.contents = contents
+
+    def __repr__(self) -> str:
+        contents = indent(str(self.contents))
+        res = f"while ( {self.condition} ){{\n{contents}\n}}"
+        return res
+
+
 class LiteralStatement(Statement):
     def __init__(self, val: Literal):
         self.val = val

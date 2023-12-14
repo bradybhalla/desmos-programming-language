@@ -1,7 +1,19 @@
-from desmos_compiler.syntax_tree import Assignment, Expression, Group, If, Literal, LiteralStatement, Node, Statement, Variable
+from desmos_compiler.syntax_tree import (
+    Assignment,
+    Expression,
+    Group,
+    If,
+    Literal,
+    LiteralStatement,
+    Node,
+    Statement,
+    Variable,
+    While,
+)
 from desmos_compiler.parser import parse
 
-class Compiler():
+
+class Compiler:
     def __init__(self):
         self.register_map = {}
         self.register_count = 0
@@ -35,8 +47,27 @@ class Compiler():
             self.assembly += ", NEXTLINE"
             self.assembly += "\n"
         elif isinstance(statement, If):
-            # TODO this is the next thing to do
-            pass
+            label = self.label_counter
+            self.label_counter += 1
+
+            self.assembly += f"line \\left\\{{ {self.compile_node(statement.condition)}: NEXTLINE, GOTO else{label} \\right\\}}\n"
+            self.compile_statement(statement.contents)
+            self.assembly += f"line GOTO endif{label}\n"
+            self.assembly += f"label else{label}\n"
+            if statement._else is not None:
+                self.compile_statement(statement._else)
+            self.assembly += f"label endif{label}\n"
+
+        elif isinstance(statement, While):
+            label = self.label_counter
+            self.label_counter += 1
+
+            self.assembly += f"label begwhile{label}\n"
+            self.assembly += f"line \\left\\{{ {self.compile_node(statement.condition)}: NEXTLINE, GOTO endwhile{label} \\right\\}}\n"
+            self.compile_statement(statement.contents)
+            self.assembly += f"line GOTO begwhile{label}\n"
+            self.assembly += f"label endwhile{label}\n"
+                
         elif isinstance(statement, LiteralStatement):
             self.assembly += "expr " + self.compile_node(statement.val)
         elif isinstance(statement, Group):
@@ -45,7 +76,7 @@ class Compiler():
         else:
             raise ValueError("Statement cannot be compiled")
 
-    def compile_node(self, node: Node)->str:
+    def compile_node(self, node: Node) -> str:
         if not isinstance(node, Node) or isinstance(node, Statement):
             raise ValueError("Input is of the wrong type")
 
@@ -58,15 +89,14 @@ class Compiler():
         else:
             raise ValueError("Node cannot be compiled")
 
-    def generate_assembly(self)->str:
+    def generate_assembly(self) -> str:
         return self.assembly
 
-def compile(program: str)->str:
+
+def compile(program: str) -> str:
     ast_statements = parse(program)
 
     compiler = Compiler()
     compiler.compile_node(ast_statements)
 
     return compiler.generate_assembly()
-
-
