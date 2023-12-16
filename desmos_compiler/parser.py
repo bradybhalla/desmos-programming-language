@@ -8,61 +8,9 @@ from desmos_compiler.syntax_tree import (
     Variable,
     While,
 )
+from pathlib import Path
 
-# TODO: add -$x with highest priority expr
-GRAMMAR = r"""
-start: statement+
-
-?statement: assignment | if_ | while_
-
-lval: VAR
-assignment: lval "=" expr ";"
-
-?if_: if_only | if_else
-if_only: "if" "(" expr ")" "{" statement+ "}"
-if_else: if_only (elif | else_)
-?elif: "else" if_
-else_: "else" "{" statement+ "}"
-
-while_: "while" "(" expr ")" "{" statement+ "}"
-
-?expr: expr0
-?expr0: expr1
-      | expr0 (EQ | NE | LT | GT | LE | GE) expr1
-
-?expr1: expr2
-      | expr1 (ADD | SUB) expr2
-
-?expr2: expr3
-      | expr2 (MULT | DIV | MOD) expr3
-
-?expr3: NUM | VAR
-      | "(" expr0 ")" -> parens_expr
-
-
-VAR: "$" CNAME
-NUM: SIGNED_NUMBER
-
-MULT: "*"
-DIV: "/"
-MOD: "%"
-
-ADD: "+"
-SUB: "-"
-
-EQ: "=="
-NE: "!="
-LT: "<"
-GT: ">"
-LE: "<="
-GE: ">="
-
-%import common.SIGNED_NUMBER
-%import common.CNAME
-%import common.WS
-
-%ignore WS
-"""
+# TODO: add -$x with highest priority expr in the grammar
 
 
 class SyntaxTreeTransformer(Transformer):
@@ -128,7 +76,10 @@ def get_expression_from_op(op: str, left: Expression, right: Expression):
 
 
 def parse(program: str):
-    l = Lark(GRAMMAR, parser="earley")
+    with open(Path(__file__).resolve().parent / "grammar.lark", "r") as f:
+        grammar = f.read()
+
+    l = Lark(grammar, parser="earley")
     tree = l.parse(program)
     tree = SyntaxTreeTransformer().transform(tree)
     return tree

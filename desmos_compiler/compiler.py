@@ -44,6 +44,7 @@ class Compiler:
             if statement.var.name not in self.register_map:
                 self._create_var(statement.var)
 
+            # TODO: compile val first to make sure it doesn't use var
             self.assembly += "line "
             self.assembly += self.compile_node(statement.var)
             self.assembly += r" \to "

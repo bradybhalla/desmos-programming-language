@@ -1,0 +1,51 @@
+start: statement+
+
+?statement: assignment | if_ | while_
+
+lval: VAR
+assignment: lval "=" expr ";"
+
+?if_: if_only | if_else
+if_only: "if" "(" expr ")" "{" statement+ "}"
+if_else: if_only (elif | else_)
+?elif: "else" if_
+else_: "else" "{" statement+ "}"
+
+while_: "while" "(" expr ")" "{" statement+ "}"
+
+?expr: expr0
+?expr0: expr1
+      | expr0 (EQ | NE | LT | GT | LE | GE) expr1
+
+?expr1: expr2
+      | expr1 (ADD | SUB) expr2
+
+?expr2: expr3
+      | expr2 (MULT | DIV | MOD) expr3
+
+?expr3: NUM | VAR
+      | "(" expr0 ")" -> parens_expr
+
+
+VAR: "$" CNAME
+NUM: SIGNED_NUMBER
+
+MULT: "*"
+DIV: "/"
+MOD: "%"
+
+ADD: "+"
+SUB: "-"
+
+EQ: "=="
+NE: "!="
+LT: "<"
+GT: ">"
+LE: "<="
+GE: ">="
+
+%import common.SIGNED_NUMBER
+%import common.CNAME
+%import common.WS
+
+%ignore WS
