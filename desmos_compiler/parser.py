@@ -1,128 +1,134 @@
-from lark import Lark, ParseTree, Token
+from lark import Lark, Transformer, Tree
 from desmos_compiler.syntax_tree import (
     Assignment,
     Expression,
     If,
     Literal,
-    Statement,
     Group,
     Variable,
+    While,
 )
 
+# TODO: add -$x with highest priority expr
 GRAMMAR = r"""
 start: statement+
 
-statement: assignment | if
+?statement: assignment | if_ | while_
 
-assignment: VAR "=" expr ";"
+lval: VAR
+assignment: lval "=" expr ";"
 
-if: if_only | if_else
+?if_: if_only | if_else
 if_only: "if" "(" expr ")" "{" statement+ "}"
-if_else: if_only (elif | else)
-elif: "else" if
-else: "else" "{" statement+ "}"
+if_else: if_only (elif | else_)
+?elif: "else" if_
+else_: "else" "{" statement+ "}"
 
-expr: (VAR | LITERAL)+
+while_: "while" "(" expr ")" "{" statement+ "}"
 
-VAR: "$" /[a-zA-Z_][\w_]*/
-LITERAL: /1+/
+?expr: expr0
+?expr0: expr1
+      | expr0 (EQ | NE | LT | GT | LE | GE) expr1
 
-// expr: "(" expr ")" | expr (OP | BOOL_OP) expr | NUM | VAR
-// VAR: "$" /[\w_][\w\d_]*/
-// NUM: /-?[\d\.]+/
-// 
-// EQ.1: "=="
-// LT.1: "<"
-// GT.1: ">"
-// LE.1: "<="
-// GE.1: ">="
-// MULT.2: "*"
-// DIV.2: "/"
-// ADD.3: "+"
-// SUB.3: "-"
-// 
-// OP: MULT | DIV | ADD | SUB
-// BOOL_OP: EQ | LT | GT | LE | GE
+?expr1: expr2
+      | expr1 (ADD | SUB) expr2
 
-%ignore " "
-%ignore "\n"
+?expr2: expr3
+      | expr2 (MULT | DIV | MOD) expr3
+
+?expr3: NUM | VAR
+      | "(" expr0 ")" -> parens_expr
+
+
+VAR: "$" CNAME
+NUM: SIGNED_NUMBER
+
+MULT: "*"
+DIV: "/"
+MOD: "%"
+
+ADD: "+"
+SUB: "-"
+
+EQ: "=="
+NE: "!="
+LT: "<"
+GT: ">"
+LE: "<="
+GE: ">="
+
+%import common.SIGNED_NUMBER
+%import common.CNAME
+%import common.WS
+
+%ignore WS
 """
 
-# remove $ from variable
-def get_variable_name(var):
-    return var[1:]
 
-def parse_expr(tree_node):
-    expression_list = []
-    for i in tree_node.children:
-        if isinstance(i, Token):
-            if i.type == "VAR":
-                expression_list.append(Variable(i.value))
-            elif i.type == "LITERAL":
-                expression_list.append(Literal(i.value))
+class SyntaxTreeTransformer(Transformer):
+    VAR = lambda _, x: Expression([Variable(x)])
+    NUM = lambda _, x: Expression([Literal(x)])
+
+    start = lambda _, x: Group(x)
+
+    lval = lambda _, x: x[0].nodes[0]
+    assignment = lambda _, x: Assignment(x[0], x[1])
+
+    if_only = lambda _, x: If(x[0], Group(x[1:]), None)
+    else_ = lambda _, x: Group(x)
+
+    while_ = lambda _, x: While(x[0], Group(x[1:]))
+
+    parens_expr = lambda _, x: _construct(["(", x[0], ")"])
+
+    def __default__(self, data, children, meta):
+        if "expr" in data:
+            l = children[0]
+            op = children[1].value
+            r = children[2]
+            return get_expression_from_op(op, l, r)
+        return Tree(data, children, meta)
+
+    def if_else(self, args):
+        if_, else_ = args
+        if_._else = else_
+        return if_
+
+
+def _construct(lst: list[Expression | str]):
+    expr_list = []
+    for i in lst:
+        if isinstance(i, Expression):
+            expr_list += i.nodes
+        elif isinstance(i, str):
+            s = i.replace("(", "\\left(").replace(")", "\\right)")
+            expr_list.append(Literal(s))
         else:
-            raise ValueError("not a token")
+            raise ValueError("Must be Expression or str")
+    return Expression(expr_list)
 
-    return Expression(expression_list)
 
-
-def parse_ifs(tree):
-    if tree.data == "if_only":
-        condition = parse_expr(tree.children[0])
-        contents = Group([create_statement_node(i) for i in tree.children[1:]])
-        return If(condition, contents, None)
-
-    elif tree.data == "if_else":
-        if_node = parse_ifs(tree.children[0])
-        if tree.children[1].data == "elif":
-            _else = parse_ifs(tree.children[1].children[0].children[0])
-        elif tree.children[1].data == "else":
-            _else = Group([create_statement_node(i) for i in tree.children[1].children])
-        else:
-            raise ValueError("unknown node type")
-        if_node._else = _else
-        return if_node
-
+def get_expression_from_op(op: str, left: Expression, right: Expression):
+    if op == "/":
+        return _construct(["\\frac{", left, "}{", right, "}"])
+    elif op == "%":
+        return _construct(["\\operatorname{mod}(", left, ",", right, ")"])
+    elif op in "*-+":
+        op = op.replace("*", "\\cdot ")
+        return _construct([left, op, right])
+    elif op == "!=":
+        return _construct(["\\left|", left, "- (", right, ")\\right| > 0"])
+    elif op in ["<", ">", "<=", ">=", "=="]:
+        op = op.replace(">=", "\\ge ")
+        op = op.replace("<=", "\\le ")
+        op = op.replace("==", " = ")
+        return _construct([left, op, right])
     else:
-        raise ValueError("unknown node type")
-
-
-def create_statement_node(statement_node):
-    rule_node = statement_node.children[0]
-    if rule_node.data == "assignment":
-        expr = parse_expr(rule_node.children[1])
-        return Assignment(Variable(rule_node.children[0]), expr)
-
-    elif rule_node.data == "if":
-        return parse_ifs(rule_node.children[0])
-
-    else:
-        raise ValueError("unknown node type")
+        raise ValueError("unknown operator")
 
 
 def parse(program: str):
-    l = Lark(GRAMMAR, parser="lalr")
+    l = Lark(GRAMMAR, parser="earley")
     tree = l.parse(program)
-
-    statements = tree.children
-
-    return Group([create_statement_node(i) for i in statements])
-
-
-program = """
-
-$xsdf = 11 $asdf1 111 $as1d111ff1;
-
-if ($x 111){
-    $asdf = 1;
-    $fff = 11;
-} else if (1 $a 11){
-    $asdf = $fs;
-} else {
-    $apple = 1;
-}
-
-"""
-
-parsed = parse(program)
-print(parsed)
+    tree = SyntaxTreeTransformer().transform(tree)
+    return tree

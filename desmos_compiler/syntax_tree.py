@@ -49,7 +49,9 @@ class Assignment(Statement):
 
 
 class If(Statement):
-    def __init__(self, condition: Expression, contents: Statement, _else: Statement | None):
+    def __init__(
+        self, condition: Expression, contents: Statement, _else: Statement | None
+    ):
         self.condition = condition
         self.contents = contents
         self._else = _else

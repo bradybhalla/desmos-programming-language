@@ -15,7 +15,7 @@ DESMOS_PATH = PROJECT_ROOT / "desmos/index.html"
 CHROMEDRIVER_PATH = PROJECT_ROOT / "chromedriver"
 
 CHROME_OPTIONS = webdriver.ChromeOptions()
-# CHROME_OPTIONS.add_argument("--headless")
+CHROME_OPTIONS.add_argument("--headless")
 
 MAX_STEPS = 1000
 
@@ -69,9 +69,7 @@ def run_program_js(
     # set input if provided
     if program_input is not None:
         driver.execute_script(
-            generate_js(
-                [DesmosExpr(id="in", latex=f"I_{{n}} = {program_input}")]
-            )
+            generate_js([DesmosExpr(id="in", latex=f"I_{{n}} = {program_input}")])
         )
         sleep(PROG_ACTION_DELAY)
 

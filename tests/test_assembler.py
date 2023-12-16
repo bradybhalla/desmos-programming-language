@@ -2,6 +2,7 @@ import pytest
 from conftest import run_program_js
 from desmos_compiler.assembler import assemble, DesmosExpr, generate_js
 
+
 @pytest.fixture
 def summation_expression_program():
     """

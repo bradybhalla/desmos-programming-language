@@ -13,6 +13,10 @@ from desmos_compiler.syntax_tree import (
 from desmos_compiler.parser import parse
 
 
+class CompilerError(Exception):
+    pass
+
+
 class Compiler:
     def __init__(self):
         self.register_map = {}
@@ -22,7 +26,7 @@ class Compiler:
         self.label_counter = 0
 
         for var in ["IN", "OUT", "DONE"]:
-            self.register_map[var] = var
+            self.register_map[f"${var}"] = var
             # registers are already created by assembler
 
     def _create_var(self, var: Variable):
@@ -67,7 +71,7 @@ class Compiler:
             self.compile_statement(statement.contents)
             self.assembly += f"line GOTO begwhile{label}\n"
             self.assembly += f"label endwhile{label}\n"
-                
+
         elif isinstance(statement, LiteralStatement):
             self.assembly += "expr " + self.compile_node(statement.val)
         elif isinstance(statement, Group):
@@ -83,7 +87,10 @@ class Compiler:
         if isinstance(node, Literal):
             return node.val
         elif isinstance(node, Variable):
-            return self.register_map[node.name]
+            try:
+                return self.register_map[node.name]
+            except KeyError:
+                raise CompilerError(f"Undefined variable {node.name}")
         elif isinstance(node, Expression):
             return "".join([self.compile_node(i) for i in node.nodes])
         else:
@@ -96,7 +103,11 @@ class Compiler:
 def compile(program: str) -> str:
     ast_statements = parse(program)
 
-    compiler = Compiler()
-    compiler.compile_node(ast_statements)
+    try:
+        compiler = Compiler()
+        compiler.compile_statement(ast_statements)
+    except CompilerError as e:
+        print("Error during compilation:", e)
+        return ""
 
     return compiler.generate_assembly()
