@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from desmos_compiler.syntax_tree import (
     Assignment,
     Expression,
@@ -17,38 +18,89 @@ class CompilerError(Exception):
     pass
 
 
+@dataclass
+class VarInfo:
+    type: str
+    defined: bool
+    register: str
+
+
+class ScopeHandler:
+    def __init__(self, prev: "ScopeHandler|None"):
+        self.prev = prev
+        self.locals: dict[str, VarInfo] = {}
+        self.register_count = 0
+
+    def declare_var(self, var: Variable, type: str, register: str | None = None)->str:
+        """
+        Declare a variable. Returns the register name.
+        """
+        if var.name in self.locals:
+            raise CompilerError(f"Variable {var.name} is already declared")
+
+        if register is None:
+            register = f"X_{{{self.register_count}}}"
+            self.register_count += 1
+
+        self.locals[var.name] = VarInfo(type, False, register)
+        return register
+
+    def var_defined(self, var: Variable):
+        if var.name in self.locals:
+            self.locals[var.name].defined = True
+        else:
+            # TODO: this shouldn't be an error
+            # as long as we can make sure it is defined in all branches of scopes
+            raise CompilerError(f"Variable {var.name} defined in a different scope than its declaration")
+
+    def get_register(self, var: Variable)->str:
+        if var.name in self.locals:
+            if not self.locals[var.name].defined:
+                raise CompilerError(f"Variable {var.name} used before definition")
+            return self.locals[var.name].register
+        else:
+            if self.prev is None:
+                raise CompilerError(f"Variable {var.name} used before declaration")
+            return self.prev.get_register(var)
+
+    def push_scope(self):
+        pass
+
+    def pop_scope(self):
+        pass
+
+
 class Compiler:
     def __init__(self):
-        self.register_map = {}
-        self.register_count = 0
+        self.scope = ScopeHandler(None)
+        self.registers = set()
         self.assembly = ""
 
         self.label_counter = 0
 
-        for var in ["IN", "OUT", "DONE"]:
-            self.register_map[f"${var}"] = var
-            # registers are already created by assembler
+        # declare required registers
+        # these registers are created by the assembler
+        self.scope.declare_var(Variable("$IN"),   "num", "IN")
+        self.scope.declare_var(Variable("$OUT"),  "num", "OUT")
+        self.scope.declare_var(Variable("$DONE"), "num", "DONE")
 
-    def _create_var(self, var: Variable):
-        assert var.name not in self.register_map
-
-        self.register_map[var.name] = f"X_{{{self.register_count}}}"
-        self.assembly += f"reg {self.register_map[var.name]}\n"
-        self.register_count += 1
+        self.scope.var_defined(Variable("$IN"))
 
     def compile_statement(self, statement: Statement):
         if not isinstance(statement, Statement):
             raise ValueError("Input is of the wrong type")
 
         if isinstance(statement, Assignment):
-            if statement.var.name not in self.register_map:
-                self._create_var(statement.var)
+            val = self.compile_node(statement.val)
+            if statement.var.name not in self.scope.locals:
+                self.registers.add(self.scope.declare_var(statement.var, "num"))
+            self.scope.var_defined(statement.var)
+            var = self.compile_node(statement.var)
 
-            # TODO: compile val first to make sure it doesn't use var
             self.assembly += "line "
-            self.assembly += self.compile_node(statement.var)
+            self.assembly += var
             self.assembly += r" \to "
-            self.assembly += self.compile_node(statement.val)
+            self.assembly += val
             self.assembly += ", NEXTLINE"
             self.assembly += "\n"
         elif isinstance(statement, If):
@@ -88,17 +140,15 @@ class Compiler:
         if isinstance(node, Literal):
             return node.val
         elif isinstance(node, Variable):
-            try:
-                return self.register_map[node.name]
-            except KeyError:
-                raise CompilerError(f"Undefined variable {node.name}")
+            return self.scope.get_register(node)
         elif isinstance(node, Expression):
             return "".join([self.compile_node(i) for i in node.nodes])
         else:
             raise ValueError("Node cannot be compiled")
 
     def generate_assembly(self) -> str:
-        return self.assembly
+        registers = "".join([f"reg {i}\n" for i in self.registers])
+        return registers + self.assembly
 
 
 def compile(program: str) -> str:

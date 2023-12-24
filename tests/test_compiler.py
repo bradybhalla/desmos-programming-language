@@ -9,8 +9,7 @@ $counter = $IN;
 
 if ($counter <= 1) {
     $OUT = $counter;
-}
-else {
+} else {
     $prev = 0;
     $curr = 1;
     $i = 2;
