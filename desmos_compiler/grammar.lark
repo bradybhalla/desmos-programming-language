@@ -2,8 +2,11 @@ start: statement+
 
 ?statement: assignment | if_ | while_
 
+?assignment: declare | assign | declare_assign
+declare: TYPE lval ";"
+assign: lval "=" expr ";"
+declare_assign: TYPE lval "=" expr ";"
 lval: VAR
-assignment: lval "=" expr ";"
 
 ?if_: if_only | if_else
 if_only: "if" "(" expr ")" "{" statement+ "}"
@@ -15,13 +18,13 @@ while_: "while" "(" expr ")" "{" statement+ "}"
 
 ?expr: expr0
 ?expr0: expr1
-      | expr0 (EQ | NE | LT | GT | LE | GE) expr1
+      | expr0 (EQ | NE | LT | GT | LE | GE) expr1 -> expr
 
 ?expr1: expr2
-      | expr1 (ADD | SUB) expr2
+      | expr1 (ADD | SUB) expr2 -> expr
 
 ?expr2: expr3
-      | expr2 (MULT | DIV | MOD) expr3
+      | expr2 (MULT | DIV | MOD) expr3 -> expr
 
 ?expr3: NUM | VAR
       | "(" expr0 ")" -> parens_expr
@@ -29,6 +32,8 @@ while_: "while" "(" expr ")" "{" statement+ "}"
 
 VAR: "$" CNAME
 NUM: SIGNED_NUMBER
+
+TYPE: "num"
 
 MULT: "*"
 DIV: "/"

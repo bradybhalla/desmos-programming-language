@@ -5,17 +5,17 @@ from desmos_compiler.compiler import compile
 
 # a slightly overcomplicated Fibonacci sequence calculator
 FIB_PROGRAM = """
-$counter = $IN;
+num $counter = $IN;
 
 if ($counter <= 1) {
     $OUT = $counter;
 } else {
-    $prev = 0;
-    $curr = 1;
-    $i = 2;
+    num $prev = 0;
+    num $curr = 1;
+    num $i = 2;
 
     while ($i != $counter + 1) {
-        $temp = $prev + ($curr - 2)*3 + 13%7 - 4*$curr / 2;
+        num $temp = $prev + ($curr - 2)*3 + 13%7 - 4*$curr / 2;
         $prev = $curr;
         $curr = $temp;
         $i = $i + 1;

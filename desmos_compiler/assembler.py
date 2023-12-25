@@ -95,7 +95,7 @@ def assemble(program: str):
     run_latex += r"\right\}"
 
     all_expressions = (
-        [DesmosExpr("run", run_latex)] + expr_expressions + register_expressions
+        [DesmosExpr("run", run_latex)] + register_expressions + expr_expressions
     )
 
     return generate_js(all_expressions)

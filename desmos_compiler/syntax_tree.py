@@ -5,6 +5,13 @@ def indent(s: str, levels: int = 1):
     return "\n".join(["    " * levels + i for i in s.split("\n")])
 
 
+class DesmosType:
+    def __init__(self, type: str):
+        assert type == "num"
+        self.type = type
+    def __repr__(self) -> str:
+        return self.type
+
 class Node(ABC):
     @abstractmethod
     def __repr__(self) -> str:
@@ -38,6 +45,12 @@ class Expression(Node):
     def __repr__(self) -> str:
         return "".join([str(i) for i in self.nodes])
 
+class Declaration(Statement):
+    def __init__(self, var: Variable, type: DesmosType):
+        self.var = var
+        self.type = type
+    def __repr__(self) -> str:
+        return f"{self.type} {self.var};"
 
 class Assignment(Statement):
     def __init__(self, var: Variable, val: Expression):

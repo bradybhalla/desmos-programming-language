@@ -4,6 +4,8 @@ from desmos_compiler.assembler import assemble
 
 from desmos_compiler.syntax_tree import (
     Assignment,
+    Declaration,
+    DesmosType,
     If,
     Variable,
     Literal,
@@ -17,7 +19,9 @@ from desmos_compiler.compiler import Compiler
 def assignment_ast_program():
     return Group(
         [
+            Declaration(Variable("X"), DesmosType("num")),
             Assignment(Variable("X"), Expression([Variable("$IN")])),
+            Declaration(Variable("Y"), DesmosType("num")),
             Assignment(
                 Variable("Y"),
                 Expression(
@@ -48,6 +52,7 @@ def conditional_ast_program():
     )
     return Group(
         [
+            Declaration(Variable("x"), DesmosType("num")),
             Assignment(Variable("x"), Expression([Variable("$IN")])),
             assign_output(-1),
             If(
@@ -80,13 +85,17 @@ def while_ast_program():
     assign_literal = lambda v, l: Assignment(Variable(v), Expression([Literal(l)]))
     return Group(
         [
+            Declaration(Variable("counter"), DesmosType("num")),
             assign_var("counter", "$IN"),
+            Declaration(Variable("x"), DesmosType("num")),
+            Declaration(Variable("y"), DesmosType("num")),
             assign_literal("x", "1"),
             assign_literal("y", "0"),
             While(
                 Expression([Variable("counter"), Literal("> 0")]),
                 Group(
                     [
+                        Declaration(Variable("tmp"), DesmosType("num")),
                         assign_var("tmp", "x"),
                         assign_var("x", "y"),
                         Assignment(

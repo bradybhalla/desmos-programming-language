@@ -1,6 +1,8 @@
 from lark import Lark, Transformer, Tree
 from desmos_compiler.syntax_tree import (
     Assignment,
+    Declaration,
+    DesmosType,
     Expression,
     If,
     Literal,
@@ -17,10 +19,16 @@ class SyntaxTreeTransformer(Transformer):
     VAR = lambda _, x: Expression([Variable(x)])
     NUM = lambda _, x: Expression([Literal(x)])
 
+    TYPE = lambda _, x: DesmosType(x)
+
     start = lambda _, x: Group(x)
 
     lval = lambda _, x: x[0].nodes[0]
-    assignment = lambda _, x: Assignment(x[0], x[1])
+    declare = lambda _, x: Declaration(x[1], x[0])
+    assign = lambda _, x: Assignment(x[0], x[1])
+    declare_assign = lambda _, x: Group(
+        [Declaration(x[1], x[0]), Assignment(x[1], x[2])]
+    )
 
     if_only = lambda _, x: If(x[0], Group(x[1:]), None)
     else_ = lambda _, x: Group(x)
@@ -29,13 +37,11 @@ class SyntaxTreeTransformer(Transformer):
 
     parens_expr = lambda _, x: _construct(["(", x[0], ")"])
 
-    def __default__(self, data, children, meta):
-        if "expr" in data:
-            l = children[0]
-            op = children[1].value
-            r = children[2]
-            return get_expression_from_op(op, l, r)
-        return Tree(data, children, meta)
+    def expr(self, children):
+        l = children[0]
+        op = children[1].value
+        r = children[2]
+        return get_expression_from_op(op, l, r)
 
     def if_else(self, args):
         if_, else_ = args
