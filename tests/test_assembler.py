@@ -23,10 +23,10 @@ def collatz_assembly_program():
     reg n
     reg l
 
-    line n \to IN, l \to 0, NEXTLINE
+    line n \to [IN], l \to [0], NEXTLINE
 
     label main
-    line \left\{n=1: (OUT \to l, DONE \to 0), \operatorname{mod}(n,2)=0: (l\to l+1, NEXTLINE), (l \to l+1, GOTO odd)\right\}
+    line \left\{n[1]=1: (OUT \to l[1], DONE \to 0), \operatorname{mod}(n[1],2)=0: (l\to l+1, NEXTLINE), (l \to l+1, GOTO odd)\right\}
 
     line n \to \frac{n}{2}, GOTO main
 

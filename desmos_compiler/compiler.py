@@ -29,9 +29,11 @@ class VarInfo:
     type: DesmosType
     defined: bool
 
+
 class ScopeChangeInfo(NamedTuple):
     new_handler: "ScopeHandler"
     asm: str
+
 
 class ScopeHandler:
     def __init__(self, prev: "ScopeHandler|None", register_lookup: dict[str, str]):
@@ -42,7 +44,9 @@ class ScopeHandler:
 
     def declare_var(self, var: Variable, type: DesmosType):
         if var.name in DEFAULT_VARS:
-            raise CompilerError(f"Variable {var.name} is a default variable and cannot be declared")
+            raise CompilerError(
+                f"Variable {var.name} is a default variable and cannot be declared"
+            )
         elif var.name in self.locals:
             raise CompilerError(f"Variable {var.name} is already declared")
 
@@ -55,9 +59,7 @@ class ScopeHandler:
         if var.name in self.locals:
             self.locals[var.name].defined = True
         elif self.prev is None:
-            raise CompilerError(
-                f"Variable {var.name} has not been declared"
-            )
+            raise CompilerError(f"Variable {var.name} has not been declared")
         else:
             return self.prev.var_defined(var)
 
@@ -69,15 +71,21 @@ class ScopeHandler:
         else:
             return self.prev.is_defined(var)
 
-    def push_scope(self)->ScopeChangeInfo:
+    def push_scope(self) -> ScopeChangeInfo:
         return ScopeChangeInfo(ScopeHandler(self, self.register_lookup), "")
 
-    def pop_scope(self)->ScopeChangeInfo:
+    def pop_scope(self) -> ScopeChangeInfo:
         if self.prev is None:
             raise ValueError(f"no scopes left to pop")
-        asm = "line NEXTLINE, " + ", ".join([fr"{self.register_lookup[i]} \to C\left({self.register_lookup[i]}\right)" for i in self.locals.keys()]) + "\n"
-        return ScopeChangeInfo(self.prev, asm)
 
+        if len(self.locals) > 0:
+            asm = "line NEXTLINE, "
+            registers = map(lambda x: self.register_lookup[x], self.locals.keys())
+            asm += ", ".join(rf"{i} \to C\left({i}\right)" for i in registers)
+            asm += "\n"
+        else:
+            asm = ""
+        return ScopeChangeInfo(self.prev, asm)
 
 
 HELPER_FUNCTIONS = [
@@ -123,16 +131,18 @@ class Compiler:
         if isinstance(statement, Declaration):
             self.scope.declare_var(statement.var, statement.type)
             var = self.register_lookup[statement.var.name]
-            self.assembly += fr"line {var} \to E\left({var}\right), NEXTLINE" + "\n"
+            self.assembly += rf"line {var} \to E\left({var}\right), NEXTLINE" + "\n"
 
         elif isinstance(statement, Assignment):
             val = self.compile_node(statement.val)
             self.scope.var_defined(statement.var)
             var = self.register_lookup[statement.var.name]
             if var in DEFAULT_REGISTERS:
-                self.assembly += fr"line {var} \to {val}, NEXTLINE" + "\n"
+                self.assembly += rf"line {var} \to {val}, NEXTLINE" + "\n"
             else:
-                self.assembly += fr"line {var} \to R\left({var},{val}\right), NEXTLINE" + "\n"
+                self.assembly += (
+                    rf"line {var} \to R\left({var},{val}\right), NEXTLINE" + "\n"
+                )
 
         elif isinstance(statement, If):
             label = self.label_counter
@@ -188,7 +198,7 @@ class Compiler:
             if register in DEFAULT_REGISTERS:
                 return register
             else:
-                return fr"{register}\left[\operatorname{{length}}\left({register}\right)\right]"
+                return rf"{register}\left[\operatorname{{length}}\left({register}\right)\right]"
         elif isinstance(node, Expression):
             return "".join([self.compile_node(i) for i in node.nodes])
         else:
@@ -196,7 +206,6 @@ class Compiler:
 
     def generate_assembly(self) -> str:
         exprs = "".join([f"expr {i}\n" for i in HELPER_FUNCTIONS])
-        exprs += "expr " + ", ".join([fr"{i} \to []" for i in self.register_lookup.values() if i not in DEFAULT_REGISTERS]) + "\n"
         registers = "".join(
             [
                 f"reg {i}\n"
