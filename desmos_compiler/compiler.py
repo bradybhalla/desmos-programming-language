@@ -1,4 +1,6 @@
 from dataclasses import dataclass
+from contextlib import contextmanager
+from typing import NamedTuple
 
 from lark import exceptions
 from desmos_compiler.syntax_tree import (
@@ -27,6 +29,9 @@ class VarInfo:
     type: DesmosType
     defined: bool
 
+class ScopeChangeInfo(NamedTuple):
+    new_handler: "ScopeHandler"
+    asm: str
 
 class ScopeHandler:
     def __init__(self, prev: "ScopeHandler|None", register_lookup: dict[str, str]):
@@ -36,7 +41,9 @@ class ScopeHandler:
         self.locals: dict[str, VarInfo] = {}
 
     def declare_var(self, var: Variable, type: DesmosType):
-        if var.name in self.locals:
+        if var.name in DEFAULT_VARS:
+            raise CompilerError(f"Variable {var.name} is a default variable and cannot be declared")
+        elif var.name in self.locals:
             raise CompilerError(f"Variable {var.name} is already declared")
 
         if var.name not in self.register_lookup:
@@ -47,37 +54,40 @@ class ScopeHandler:
     def var_defined(self, var: Variable):
         if var.name in self.locals:
             self.locals[var.name].defined = True
-        elif var.name in self.register_lookup:
-            # TODO: this shouldn't be an error
-            # as long as we can make sure it is defined in all branches of scopes
+        elif self.prev is None:
             raise CompilerError(
-                f"Variable {var.name} defined in a different scope than its declaration"
+                f"Variable {var.name} has not been declared"
             )
         else:
-            raise CompilerError(f"Variable {var.name} defined before declaration")
+            return self.prev.var_defined(var)
 
-    def get_register(self, var: Variable) -> str:
+    def is_defined(self, var: Variable):
         if var.name in self.locals:
-            if not self.locals[var.name].defined:
-                raise CompilerError(f"Variable {var.name} used before definition")
-            return self.register_lookup[var.name]
+            return self.locals[var.name].defined
+        elif self.prev is None:
+            return False
         else:
-            if self.prev is None:
-                raise CompilerError(f"Variable {var.name} used before declaration")
-            return self.prev.get_register(var)
+            return self.prev.is_defined(var)
 
-    def push_scope(self):
-        pass
+    def push_scope(self)->ScopeChangeInfo:
+        return ScopeChangeInfo(ScopeHandler(self, self.register_lookup), "")
 
-    def pop_scope(self):
-        pass
+    def pop_scope(self)->ScopeChangeInfo:
+        if self.prev is None:
+            raise ValueError(f"no scopes left to pop")
+        asm = "line NEXTLINE, " + ", ".join([fr"{self.register_lookup[i]} \to C\left({self.register_lookup[i]}\right)" for i in self.locals.keys()]) + "\n"
+        return ScopeChangeInfo(self.prev, asm)
+
 
 
 HELPER_FUNCTIONS = [
-    r"R\left(L,l\right)=\left\{\operatorname{length}\left(L\right)\le1:\left[l\right],\operatorname{join}\left(L\left[1...\operatorname{length}\left(L\right)-1\right],l\right)\right\}",  # replace the last element of L with l
+    r"R\left(L_{0},l\right)=\left\{\operatorname{length}\left(L_{0}\right)\le1:\left[l\right],\operatorname{join}\left(L_{0}\left[1...\operatorname{length}\left(L_{0}\right)-1\right],l\right)\right\}",  # replace the last element of L_0 with l
+    r"E\left(L_{0}\right)=\operatorname{join}\left(L_{0},\left[0\right]\right)",  # extend the list L_0
+    r"C\left(L_{0}\right)=\left\{\operatorname{length}\left(L_{0}\right)=1:\left[\right],L_{0}\left[1...\operatorname{length}\left(L_{0}\right)-1\right]\right\}",  # contract the list L_0
 ]
 
 DEFAULT_REGISTERS = {"IN", "OUT", "DONE"}
+DEFAULT_VARS = {f"${i}" for i in DEFAULT_REGISTERS}
 
 
 class Compiler:
@@ -92,9 +102,19 @@ class Compiler:
         # these registers are created by the assembler
         for i in DEFAULT_REGISTERS:
             self.register_lookup[f"${i}"] = i
-            self.scope.declare_var(Variable(f"${i}"), DesmosType("num"))
+            self.scope.locals[f"${i}"] = VarInfo(DesmosType("num"), False)
 
         self.scope.var_defined(Variable("$IN"))
+
+    @contextmanager
+    def _new_scope(self):
+        self.scope, asm = self.scope.push_scope()
+        self.assembly += asm
+        try:
+            yield
+        finally:
+            self.scope, asm = self.scope.pop_scope()
+            self.assembly += asm
 
     def compile_statement(self, statement: Statement):
         if not isinstance(statement, Statement):
@@ -102,29 +122,31 @@ class Compiler:
 
         if isinstance(statement, Declaration):
             self.scope.declare_var(statement.var, statement.type)
+            var = self.register_lookup[statement.var.name]
+            self.assembly += fr"line {var} \to E\left({var}\right), NEXTLINE" + "\n"
 
         elif isinstance(statement, Assignment):
             val = self.compile_node(statement.val)
             self.scope.var_defined(statement.var)
-            var = self.compile_node(statement.var)
-
-            self.assembly += "line "
-            self.assembly += var
-            self.assembly += r" \to "
-            self.assembly += val
-            self.assembly += ", NEXTLINE"
-            self.assembly += "\n"
+            var = self.register_lookup[statement.var.name]
+            if var in DEFAULT_REGISTERS:
+                self.assembly += fr"line {var} \to {val}, NEXTLINE" + "\n"
+            else:
+                self.assembly += fr"line {var} \to R\left({var},{val}\right), NEXTLINE" + "\n"
 
         elif isinstance(statement, If):
             label = self.label_counter
             self.label_counter += 1
 
             self.assembly += f"line \\left\\{{ {self.compile_node(statement.condition)}: NEXTLINE, GOTO else{label} \\right\\}}\n"
-            self.compile_statement(statement.contents)
+            with self._new_scope():
+                self.compile_statement(statement.contents)
+
             self.assembly += f"line GOTO endif{label}\n"
             self.assembly += f"label else{label}\n"
             if statement._else is not None:
-                self.compile_statement(statement._else)
+                with self._new_scope():
+                    self.compile_statement(statement._else)
             self.assembly += f"label endif{label}\n"
 
         elif isinstance(statement, While):
@@ -133,7 +155,10 @@ class Compiler:
 
             self.assembly += f"label begwhile{label}\n"
             self.assembly += f"line \\left\\{{ {self.compile_node(statement.condition)}: NEXTLINE, GOTO endwhile{label} \\right\\}}\n"
-            self.compile_statement(statement.contents)
+
+            with self._new_scope():
+                self.compile_statement(statement.contents)
+
             self.assembly += f"line GOTO begwhile{label}\n"
             self.assembly += f"label endwhile{label}\n"
 
@@ -146,13 +171,24 @@ class Compiler:
             raise ValueError("Statement cannot be compiled")
 
     def compile_node(self, node: Node) -> str:
+        """
+        Compiles a node. Only works for rvals.
+        """
         if not isinstance(node, Node) or isinstance(node, Statement):
             raise ValueError("Input is of the wrong type")
 
         if isinstance(node, Literal):
             return node.val
         elif isinstance(node, Variable):
-            return self.scope.get_register(node)
+            if node.name not in self.register_lookup:
+                raise CompilerError(f"Undeclared variable {node.name}")
+            if not self.scope.is_defined(node):
+                raise CompilerError(f"Undefined variable {node.name}")
+            register = self.register_lookup[node.name]
+            if register in DEFAULT_REGISTERS:
+                return register
+            else:
+                return fr"{register}\left[\operatorname{{length}}\left({register}\right)\right]"
         elif isinstance(node, Expression):
             return "".join([self.compile_node(i) for i in node.nodes])
         else:
@@ -160,6 +196,7 @@ class Compiler:
 
     def generate_assembly(self) -> str:
         exprs = "".join([f"expr {i}\n" for i in HELPER_FUNCTIONS])
+        exprs += "expr " + ", ".join([fr"{i} \to []" for i in self.register_lookup.values() if i not in DEFAULT_REGISTERS]) + "\n"
         registers = "".join(
             [
                 f"reg {i}\n"

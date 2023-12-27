@@ -16,10 +16,10 @@ from pathlib import Path
 
 
 class SyntaxTreeTransformer(Transformer):
-    VAR = lambda _, x: Expression([Variable(x)])
-    NUM = lambda _, x: Expression([Literal(x)])
+    VAR = lambda _, x: Expression([Variable(x.value)])
+    NUM = lambda _, x: Expression([Literal(x.value)])
 
-    TYPE = lambda _, x: DesmosType(x)
+    TYPE = lambda _, x: DesmosType(x.value)
 
     start = lambda _, x: Group(x)
 
@@ -37,12 +37,14 @@ class SyntaxTreeTransformer(Transformer):
 
     parens_expr = lambda _, x: _construct(["(", x[0], ")"])
 
+    # TODO: make single line
     def expr(self, children):
         l = children[0]
         op = children[1].value
         r = children[2]
         return get_expression_from_op(op, l, r)
 
+    # TODO: move with if statements
     def if_else(self, args):
         if_, else_ = args
         if_._else = else_
