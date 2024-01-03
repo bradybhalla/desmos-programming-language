@@ -19,6 +19,14 @@ from desmos_compiler.syntax_tree import (
 )
 from desmos_compiler.parser import parse
 
+HELPER_FUNCTIONS = [
+    r"R\left(L_{0},l\right)=\left\{\operatorname{length}\left(L_{0}\right)\le1:\left[l\right],\operatorname{join}\left(L_{0}\left[1...\operatorname{length}\left(L_{0}\right)-1\right],l\right)\right\}",  # replace the last element of L_0 with l
+    r"E\left(L_{0}\right)=\operatorname{join}\left(L_{0},\left[0\right]\right)",  # extend the list L_0
+    r"C\left(L_{0}\right)=\left\{\operatorname{length}\left(L_{0}\right)=1:\left[\right],L_{0}\left[1...\operatorname{length}\left(L_{0}\right)-1\right]\right\}",  # contract the list L_0
+]
+DEFAULT_REGISTERS = {"IN", "OUT", "DONE"}
+DEFAULT_VARS = {f"${i}" for i in DEFAULT_REGISTERS}
+
 
 class CompilerError(Exception):
     pass
@@ -37,7 +45,6 @@ class ScopeChangeInfo(NamedTuple):
 
 class ScopeHandler:
     def __init__(self, prev: "ScopeHandler|None", register_lookup: dict[str, str]):
-        # TODO: global name lookup
         self.prev = prev
         self.register_lookup = register_lookup
         self.locals: dict[str, VarInfo] = {}
@@ -86,16 +93,6 @@ class ScopeHandler:
         else:
             asm = ""
         return ScopeChangeInfo(self.prev, asm)
-
-
-HELPER_FUNCTIONS = [
-    r"R\left(L_{0},l\right)=\left\{\operatorname{length}\left(L_{0}\right)\le1:\left[l\right],\operatorname{join}\left(L_{0}\left[1...\operatorname{length}\left(L_{0}\right)-1\right],l\right)\right\}",  # replace the last element of L_0 with l
-    r"E\left(L_{0}\right)=\operatorname{join}\left(L_{0},\left[0\right]\right)",  # extend the list L_0
-    r"C\left(L_{0}\right)=\left\{\operatorname{length}\left(L_{0}\right)=1:\left[\right],L_{0}\left[1...\operatorname{length}\left(L_{0}\right)-1\right]\right\}",  # contract the list L_0
-]
-
-DEFAULT_REGISTERS = {"IN", "OUT", "DONE"}
-DEFAULT_VARS = {f"${i}" for i in DEFAULT_REGISTERS}
 
 
 class Compiler:

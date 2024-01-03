@@ -1,4 +1,4 @@
-from lark import Lark, Transformer, Tree
+from lark import Lark, Transformer
 from desmos_compiler.syntax_tree import (
     Assignment,
     Declaration,
