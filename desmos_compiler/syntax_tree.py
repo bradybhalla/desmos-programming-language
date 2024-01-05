@@ -39,6 +39,7 @@ class Variable(Node):
     def __repr__(self) -> str:
         return self.name
 
+
 class FunctionCall(Node):
     def __init__(self, name: str, args: "list[Expression]"):
         self.name = name
@@ -47,6 +48,7 @@ class FunctionCall(Node):
     def __repr__(self) -> str:
         args = ", ".join(str(i) for i in self.args)
         return f"{self.name}( {args} )"
+
 
 class Expression(Node):
     def __init__(self, nodes: list[Literal | Variable | FunctionCall]):
@@ -72,6 +74,16 @@ class Assignment(Statement):
 
     def __repr__(self) -> str:
         return f"{self.var} = {self.val};"
+
+
+class DeclareAssignment(Statement):
+    def __init__(self, var: Variable, type: DesmosType, val: Expression):
+        self.var = var
+        self.type = type
+        self.val = val
+
+    def __repr__(self) -> str:
+        return f"{self.type} {self.var} = {self.val};"
 
 
 class If(Statement):

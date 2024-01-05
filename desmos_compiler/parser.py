@@ -2,6 +2,7 @@ from lark import Lark, Transformer
 from desmos_compiler.syntax_tree import (
     Assignment,
     Declaration,
+    DeclareAssignment,
     DesmosType,
     Expression,
     FunctionCall,
@@ -31,9 +32,7 @@ class SyntaxTreeTransformer(Transformer):
     lval = lambda _, x: x[0].nodes[0]
     declare = lambda _, x: Declaration(x[1], x[0])
     assign = lambda _, x: Assignment(x[0], x[1])
-    declare_assign = lambda _, x: Group(
-        [Declaration(x[1], x[0]), Assignment(x[1], x[2])]
-    )
+    declare_assign = lambda _, x: DeclareAssignment(x[1], x[0], x[2])
 
     if_only = lambda _, x: If(x[0], Group(x[1:]), None)
     else_ = lambda _, x: Group(x)
@@ -94,7 +93,5 @@ def parse(program: str):
 
     l = Lark(grammar, parser="earley")
     tree = l.parse(program)
-    print(tree, "\n")
     tree = SyntaxTreeTransformer().transform(tree)
-    print(tree, "\n")
     return tree
