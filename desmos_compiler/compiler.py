@@ -8,6 +8,7 @@ from desmos_compiler.syntax_tree import (
     Declaration,
     DesmosType,
     Expression,
+    FunctionDefinition,
     Group,
     If,
     Literal,
@@ -21,7 +22,7 @@ from desmos_compiler.parser import parse
 
 HELPER_FUNCTIONS = [
     r"R\left(L_{0},l\right)=\left\{\operatorname{length}\left(L_{0}\right)\le1:\left[l\right],\operatorname{join}\left(L_{0}\left[1...\operatorname{length}\left(L_{0}\right)-1\right],l\right)\right\}",  # replace the last element of L_0 with l
-    r"E\left(L_{0}\right)=\operatorname{join}\left(L_{0},\left[0\right]\right)",  # extend the list L_0
+    r"E\left(L_{0}\right)=\left\{\operatorname{length}\left(L_{0}\right)=0:\left[0\right],\operatorname{join}\left(L_{0},L_{0}\left[\operatorname{length}\left(L_{0}\right)\right]\right)\right\}",  # extend the list L_0
     r"C\left(L_{0}\right)=\left\{\operatorname{length}\left(L_{0}\right)=1:\left[\right],L_{0}\left[1...\operatorname{length}\left(L_{0}\right)-1\right]\right\}",  # contract the list L_0
 ]
 DEFAULT_REGISTERS = {"IN", "OUT", "DONE"}
@@ -95,9 +96,14 @@ class ScopeHandler:
         return ScopeChangeInfo(self.prev, asm)
 
 
+class FuncInfo(NamedTuple):
+    label: str
+    definition: FunctionDefinition
+
 class Compiler:
     def __init__(self):
         self.register_lookup = {}
+        self.function_lookup: dict[str, FuncInfo] = {}
         self.scope = ScopeHandler(None, self.register_lookup)
         self.assembly = ""
 
@@ -110,6 +116,7 @@ class Compiler:
             self.scope.locals[f"${i}"] = VarInfo(DesmosType("num"), False)
 
         self.scope.var_defined(Variable("$IN"))
+
 
     @contextmanager
     def _new_scope(self):
