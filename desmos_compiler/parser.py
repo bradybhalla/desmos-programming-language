@@ -4,6 +4,9 @@ from desmos_compiler.syntax_tree import (
     Declaration,
     DesmosType,
     Expression,
+    FunctionCall,
+    FunctionParameter,
+    FunctionDefinition,
     If,
     Literal,
     Group,
@@ -19,6 +22,8 @@ class SyntaxTreeTransformer(Transformer):
     VAR = lambda _, x: Expression([Variable(x.value)])
     NUM = lambda _, x: Expression([Literal(x.value)])
 
+    FUNC_NAME = lambda _, x: x.value
+
     TYPE = lambda _, x: DesmosType(x.value)
 
     start = lambda _, x: Group(x)
@@ -33,22 +38,22 @@ class SyntaxTreeTransformer(Transformer):
     if_only = lambda _, x: If(x[0], Group(x[1:]), None)
     else_ = lambda _, x: Group(x)
 
-    while_ = lambda _, x: While(x[0], Group(x[1:]))
-
-    parens_expr = lambda _, x: _construct(["(", x[0], ")"])
-
-    # TODO: make single line
-    def expr(self, children):
-        l = children[0]
-        op = children[1].value
-        r = children[2]
-        return get_expression_from_op(op, l, r)
-
-    # TODO: move with if statements
     def if_else(self, args):
         if_, else_ = args
         if_._else = else_
         return if_
+
+    while_ = lambda _, x: While(x[0], Group(x[1:]))
+
+    func_param = lambda _, x: FunctionParameter(x[1], x[0])
+    param_list = lambda _, x: x
+    function_def = lambda _, x: FunctionDefinition(x[1], x[0], x[2], Group(x[3:]))
+
+    arg_list = lambda _, x: x
+    function_call = lambda _, x: FunctionCall(x[0], x[1])
+
+    parens_expr = lambda _, x: _construct(["(", x[0], ")"])
+    expr = lambda _, x: get_expression_from_op(x[1].value, x[0], x[2])
 
 
 def _construct(lst: list[Expression | str]):
@@ -89,5 +94,7 @@ def parse(program: str):
 
     l = Lark(grammar, parser="earley")
     tree = l.parse(program)
+    print(tree, "\n")
     tree = SyntaxTreeTransformer().transform(tree)
+    print(tree, "\n")
     return tree

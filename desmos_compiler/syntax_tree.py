@@ -9,8 +9,10 @@ class DesmosType:
     def __init__(self, type: str):
         assert type == "num"
         self.type = type
+
     def __repr__(self) -> str:
         return self.type
+
 
 class Node(ABC):
     @abstractmethod
@@ -37,20 +39,31 @@ class Variable(Node):
     def __repr__(self) -> str:
         return self.name
 
+class FunctionCall(Node):
+    def __init__(self, name: str, args: "list[Expression]"):
+        self.name = name
+        self.args = args
+
+    def __repr__(self) -> str:
+        args = ", ".join(str(i) for i in self.args)
+        return f"{self.name}( {args} )"
 
 class Expression(Node):
-    def __init__(self, nodes: list[Literal | Variable]):
+    def __init__(self, nodes: list[Literal | Variable | FunctionCall]):
         self.nodes = nodes
 
     def __repr__(self) -> str:
         return "".join([str(i) for i in self.nodes])
 
+
 class Declaration(Statement):
     def __init__(self, var: Variable, type: DesmosType):
         self.var = var
         self.type = type
+
     def __repr__(self) -> str:
         return f"{self.type} {self.var};"
+
 
 class Assignment(Statement):
     def __init__(self, var: Variable, val: Expression):
@@ -86,6 +99,35 @@ class While(Statement):
     def __repr__(self) -> str:
         contents = indent(str(self.contents))
         res = f"while ( {self.condition} ){{\n{contents}\n}}"
+        return res
+
+
+class FunctionParameter(Statement):
+    def __init__(self, var: Variable, type: DesmosType):
+        self.var = var
+        self.type = type
+
+    def __repr__(self) -> str:
+        return f"{self.type} {self.var}"
+
+
+class FunctionDefinition(Statement):
+    def __init__(
+        self,
+        name: str,
+        ret_type: DesmosType,
+        params: list[FunctionParameter],
+        body: Statement,
+    ):
+        self.name = name
+        self.ret_type = ret_type
+        self.params = params
+        self.body = body
+
+    def __repr__(self) -> str:
+        body = indent(str(self.body))
+        args = ", ".join([str(i) for i in self.params])
+        res = f"{self.ret_type} {self.name} ( {args} ){{\n{body}\n}}"
         return res
 
 
