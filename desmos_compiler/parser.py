@@ -29,7 +29,7 @@ class SyntaxTreeTransformer(Transformer):
 
     start = lambda _, x: Group(x)
 
-    lval = lambda _, x: x[0].nodes[0]
+    lval = lambda _, x: x[0]
     declare = lambda _, x: Declaration(x[1], x[0])
     assign = lambda _, x: Assignment(x[0], x[1])
     declare_assign = lambda _, x: DeclareAssignment(x[1], x[0], x[2])

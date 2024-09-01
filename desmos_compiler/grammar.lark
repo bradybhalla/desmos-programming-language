@@ -41,7 +41,7 @@ return: "return" expr? ";"
       | function_call
 
 
-VAR: "$" CNAME
+VAR: CNAME
 FUNC_NAME: CNAME
 NUM: SIGNED_NUMBER
 

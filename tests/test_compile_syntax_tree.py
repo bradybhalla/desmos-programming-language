@@ -138,7 +138,7 @@ def test_compile_from_ast(driver, program, program_inputs):
 
     compiler = Compiler()
     compiler.compile_statement(ast_program())
-    asm = compiler.generate_assembly()
+    asm = compiler._build_assembly()
     js = assemble(asm)
 
     for i in program_inputs:
