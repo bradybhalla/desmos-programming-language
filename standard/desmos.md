@@ -1,5 +1,7 @@
 # Standard for Generated Desmos Expressions
 
+The assembler is required to adhere to this standard in order for the test suite to function properly.
+
 ## Required expressions
 | id   | variable name | description                              |  type
 |------|---------------|------------------------------------------|----------------
