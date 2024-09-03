@@ -1,12 +1,9 @@
 start: statement+
 
-?statement: assignment | if_ | while_ | function_def | return
+?statement: declaration | assignment | if_ | while_ | function_def | function_return | function_call_statement
 
-?assignment: declare | assign | declare_assign
-declare: TYPE lval ";"
-assign: lval "=" expr ";"
-declare_assign: TYPE lval "=" expr ";"
-lval: VAR
+declaration: TYPE VAR ";"
+assignment: VAR "=" expr ";"
 
 ?if_: if_only | if_else
 if_only: "if" "(" expr ")" "{" statement* "}"
@@ -16,25 +13,26 @@ else_: "else" "{" statement* "}"
 
 while_: "while" "(" expr ")" "{" statement* "}"
 
-
-function_def: TYPE FUNC_NAME "(" param_list ")" "{" statement* "}"
+function_def: TYPE VAR "(" param_list ")" "{" statement* "}"
 param_list: ((func_param ",")* func_param)?
-func_param: TYPE lval
+func_param: TYPE VAR
 
-function_call: FUNC_NAME "(" arg_list ")"
+function_call: VAR "(" arg_list ")"
 arg_list: ((expr ",")* expr)?
 
-return: "return" expr? ";"
+function_return: "return" expr ";"
+
+function_call_statement: function_call ";"
 
 ?expr: expr0
 ?expr0: expr1
-      | expr0 (EQ | NE | LT | GT | LE | GE) expr1 -> expr
+      | expr0 (EQ | NE | LT | GT | LE | GE) expr1 -> binary_expr
 
 ?expr1: expr2
-      | expr1 (ADD | SUB) expr2 -> expr
+      | expr1 (ADD | SUB) expr2 -> binary_expr
 
 ?expr2: expr3
-      | expr2 (MULT | DIV | MOD) expr3 -> expr
+      | expr2 (MULT | DIV | MOD) expr3 -> binary_expr
 
 ?expr3: NUM | VAR
       | "(" expr0 ")" -> parens_expr
@@ -42,7 +40,6 @@ return: "return" expr? ";"
 
 
 VAR: CNAME
-FUNC_NAME: CNAME
 NUM: SIGNED_NUMBER
 
 TYPE: "num"

@@ -1,32 +1,43 @@
 import pytest
-from conftest import run_program_js
-from desmos_compiler.assembler import assemble, DesmosExpr, generate_js
+from tests.utils import run_program_js
+from desmos_compiler.assembler import assemble
 
 
-@pytest.fixture
-def summation_expression_program():
+@pytest.mark.parametrize(
+    "output_type,out,done",
+    [
+        ("numeric", 0, 0),
+        ("numeric", 1, 0),
+        ("list", [1, 2, 3], 0),
+        ("numeric", 5, 1),
+        ("list", [4, 3, 2], 2),
+    ],
+)
+def test_js_runner(driver, output_type, out, done):
+    assembly = rf"""
+    line OUT \to IN, NEXTLINE
+    line GOTO label
+    label label
+    line DONE \to {done}
     """
-    Desmos expressions to calculate the sum 1 + 2 + ... + input
-    """
-    return [
-        DesmosExpr(id="run", latex="R_{un} = a \\to a-1, O_{ut} \\to O_{ut} + a"),
-        DesmosExpr(id="in", latex="I_{n} = 2"),
-        DesmosExpr(id="out", latex="O_{ut} = 0"),
-        DesmosExpr(id="done", latex="D_{one} = -a"),
-        DesmosExpr(id="0", latex="a=I_{n}"),
-    ]
+    js = assemble(assembly)
+
+    program_output = run_program_js(
+        driver=driver, desmos_js=js, program_input=str(out), output_type=output_type
+    )
+    assert program_output.exit_code == done
+    assert program_output.output == out
 
 
 @pytest.fixture
 def collatz_assembly_program():
     return r"""
-    reg n
-    reg l
-
-    line n \to [IN], l \to [0], NEXTLINE
+    expr n=0
+    expr l=0
+    line n \to IN, l \to 0, NEXTLINE
 
     label main
-    line \left\{n[1]=1: (OUT \to l[1], DONE \to 0), \operatorname{mod}(n[1],2)=0: (l\to l+1, NEXTLINE), (l \to l+1, GOTO odd)\right\}
+    line \left\{n=1: (OUT \to l, DONE \to 0), \operatorname{mod}(n,2)=0: (l\to l+1, LINE \to LINE + 1), (l \to l+1, GOTO odd)\right\}
 
     line n \to \frac{n}{2}, GOTO main
 
@@ -35,34 +46,18 @@ def collatz_assembly_program():
     """
 
 
-@pytest.mark.parametrize("program_input", [2, 3, 10])
-def test_generate_js(driver, summation_expression_program, program_input):
-    """
-    Ensure `DesmosImplementation.generate_js` functions correctly on
-    a simple program created with a list of Desmos expressions
-    """
-    js = generate_js(summation_expression_program)
-    output, exit_code = run_program_js(
-        driver=driver, desmos_js=js, program_input=program_input
-    )
-    assert exit_code == 0
-
-    # calculates 1 + 2 + ... + program_input
-    assert output == program_input * (program_input + 1) // 2
-
-
 @pytest.mark.parametrize("program_input", [1, 3, 7])
-def test_assemble(driver, collatz_assembly_program, program_input):
+def test_assembler(driver, collatz_assembly_program, program_input):
     """
     Ensure `DesmosImplementation.generate_exprs` functions correctly
     on an assembly program
     """
     js = assemble(collatz_assembly_program)
 
-    output, exit_code = run_program_js(
+    program_output = run_program_js(
         driver=driver, desmos_js=js, program_input=program_input
     )
-    assert exit_code == 0
+    assert program_output.exit_code == 0
 
     # calculate the length of the Collatz sequence starting with program_input
     expected_output = 0
@@ -71,4 +66,4 @@ def test_assemble(driver, collatz_assembly_program, program_input):
         n = n // 2 if n % 2 == 0 else 3 * n + 1
         expected_output += 1
 
-    assert output == expected_output
+    assert program_output.output == expected_output

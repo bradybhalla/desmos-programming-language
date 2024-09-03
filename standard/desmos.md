@@ -1,4 +1,4 @@
-# Generated Desmos Expressions
+# Standard for Generated Desmos Expressions
 
 ## Required expressions
 | id   | variable name | description                              |  type

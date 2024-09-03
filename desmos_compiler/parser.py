@@ -1,16 +1,19 @@
-from lark import Lark, Transformer
+from lark import Lark, Transformer, exceptions
 from desmos_compiler.syntax_tree import (
     Assignment,
+    BinaryOperation,
     Declaration,
-    DeclareAssignment,
     DesmosType,
-    Expression,
     FunctionCall,
+    FunctionCallStatement,
     FunctionParameter,
     FunctionDefinition,
+    FunctionReturn,
     If,
     Literal,
     Group,
+    Operator,
+    Statement,
     Variable,
     While,
 )
@@ -20,78 +23,57 @@ from pathlib import Path
 
 
 class SyntaxTreeTransformer(Transformer):
-    VAR = lambda _, x: Expression([Variable(x.value)])
-    NUM = lambda _, x: Expression([Literal(x.value)])
-
-    FUNC_NAME = lambda _, x: x.value
+    VAR = lambda _, x: Variable(x.value)
+    NUM = lambda _, x: Literal(x.value)
 
     TYPE = lambda _, x: DesmosType(x.value)
 
     start = lambda _, x: Group(x)
 
-    lval = lambda _, x: x[0]
-    declare = lambda _, x: Declaration(x[1], x[0])
-    assign = lambda _, x: Assignment(x[0], x[1])
-    declare_assign = lambda _, x: DeclareAssignment(x[1], x[0], x[2])
+    declaration = lambda _, x: Declaration(x[1], x[0])
+    assignment = lambda _, x: Assignment(x[0], x[1])
 
     if_only = lambda _, x: If(x[0], Group(x[1:]), None)
     else_ = lambda _, x: Group(x)
 
     def if_else(self, args):
         if_, else_ = args
-        if_._else = else_
-        return if_
+        return If(if_.condition, if_.contents, else_)
 
     while_ = lambda _, x: While(x[0], Group(x[1:]))
 
-    func_param = lambda _, x: FunctionParameter(x[1], x[0])
-    param_list = lambda _, x: x
     function_def = lambda _, x: FunctionDefinition(x[1], x[0], x[2], Group(x[3:]))
+    param_list = lambda _, x: x
+    func_param = lambda _, x: FunctionParameter(x[1], x[0])
 
-    arg_list = lambda _, x: x
     function_call = lambda _, x: FunctionCall(x[0], x[1])
+    arg_list = lambda _, x: x
 
-    parens_expr = lambda _, x: _construct(["(", x[0], ")"])
-    expr = lambda _, x: get_expression_from_op(x[1].value, x[0], x[2])
+    function_return = lambda _, x: FunctionReturn(x[0])
 
+    function_call_statement = lambda _, x: FunctionCallStatement(x[0])
 
-def _construct(lst: list[Expression | str]):
-    expr_list = []
-    for i in lst:
-        if isinstance(i, Expression):
-            expr_list += i.nodes
-        elif isinstance(i, str):
-            s = i.replace("(", "\\left(").replace(")", "\\right)")
-            expr_list.append(Literal(s))
-        else:
-            raise ValueError("Must be Expression or str")
-    return Expression(expr_list)
+    parens_expr = lambda _, x: x[0]
+    binary_expr = lambda _, x: BinaryOperation(x[0], x[2], Operator(x[1].value))
 
+class ParserError(Exception):
+    pass
 
-def get_expression_from_op(op: str, left: Expression, right: Expression):
-    if op == "/":
-        return _construct(["\\frac{", left, "}{", right, "}"])
-    elif op == "%":
-        return _construct(["\\operatorname{mod}(", left, ",", right, ")"])
-    elif op in "*-+":
-        op = op.replace("*", "\\cdot ")
-        return _construct([left, op, right])
-    elif op == "!=":
-        return _construct(["\\left|", left, "- (", right, ")\\right| > 0"])
-    elif op in ["<", ">", "<=", ">=", "=="]:
-        op = op.replace(">=", "\\ge ")
-        op = op.replace("<=", "\\le ")
-        op = op.replace("==", " = ")
-        return _construct([left, op, right])
-    else:
-        raise ValueError("unknown operator")
+def parse(program: str) -> Statement:
+    try:
+        with open(Path(__file__).resolve().parent / "grammar.lark", "r") as f:
+            grammar = f.read()
+        l = Lark(grammar, parser="earley")
+    except:
+        raise ParserError("Could not read grammar file")
 
+    try:
+        tree = l.parse(program)
+        tree = SyntaxTreeTransformer().transform(tree)
+        return tree
+    except exceptions.UnexpectedCharacters as e:
+        message = f"Unexpected character at line {e.line} col {e.column}"
+        message += "\n\n" + e._context
+        message += e._format_expected(e.allowed)
+        raise ParserError(message)
 
-def parse(program: str):
-    with open(Path(__file__).resolve().parent / "grammar.lark", "r") as f:
-        grammar = f.read()
-
-    l = Lark(grammar, parser="earley")
-    tree = l.parse(program)
-    tree = SyntaxTreeTransformer().transform(tree)
-    return tree

@@ -1,24 +1,22 @@
-from desmos_compiler.compiler import compile
+from desmos_compiler.compiler import compile_syntax_tree
 from desmos_compiler.assembler import assemble
+from desmos_compiler.parser import parse
 
 program = """
-num counter = 4;
-
-if (1 == 1){
-    num counter = counter;
-    counter = counter + 1;
-    OUT = counter;
+num max(num x, num y){
+    if (x >= y){
+        return x;
+    } else {
+        return y;
+    }
 }
 
-while (counter <= 3){
-    counter = counter + 1;
-}
-OUT = counter;
+OUT = max(10, IN);
 """
 
-compile(program)
+syntax_tree = parse(program)
+desmos_assembly = compile_syntax_tree(syntax_tree)
+js = assemble(desmos_assembly)
 
-# compiled = compile(program)
-# js = assemble(compiled)
-
-# print(js)
+# print(desmos_assembly)
+print(js)
