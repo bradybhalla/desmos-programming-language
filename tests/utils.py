@@ -71,8 +71,8 @@ def run_program_js(
     )
     driver.execute_script(
         """
-        selenium_track_output = calculator.HelperExpression({ latex: 'O_{ut}' }); 
-        selenium_track_done = calculator.HelperExpression({ latex: 'D_{one}' });
+        selenium_track_output = Calc.HelperExpression({ latex: 'O_{ut}' });
+        selenium_track_done = Calc.HelperExpression({ latex: 'D_{one}' });
         """
     )
     sleep(PROG_ACTION_DELAY)

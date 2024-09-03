@@ -25,7 +25,7 @@ def generate_js(exprs: list[DesmosExpr]) -> str:
     which creates the expressions when run in Desmos
     """
     json = dumps([{"id": i.id, "latex": i.latex, **i.kwargs} for i in exprs])
-    return f"calculator.setExpressions({json})"
+    return f"Calc.setExpressions({json})"
 
 
 def process_line(line: str, labels: dict[str, str]):

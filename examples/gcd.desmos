@@ -5,4 +5,4 @@ num gcd(num a, num b){
     return gcd(b, a % b);
 }
 
-OUT = gcd(15, 18);
+OUT = gcd(114, 294);
