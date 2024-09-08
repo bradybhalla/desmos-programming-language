@@ -8,7 +8,7 @@ The following steps are used to convert a program into a Desmos graph:
 3. Turn the generated Desmos assembly into expressions which can be pasted into Desmos
 
 # Usage
-Running `python -m desmos_compiler <path>` outputs a JavaScript command to stdout. Pasting this command into the console at [https://www.desmos.com/calculator](https://www.desmos.com/calculator) will use the Desmos API to create the expressions needed for the program to execute.
+Running `desmoscc <path>` outputs a JavaScript command to stdout. Pasting this command into the console at [https://www.desmos.com/calculator](https://www.desmos.com/calculator) will use the Desmos API to create the expressions needed for the program to execute.
 
 The first line in the Desmos graph will be an action called "Run", which runs the program as it is clicked. This can be sped up by clicking the "+" in the top left of the screen, selecting "ticker", typing "R_un" into the blank space, and pressing the play button. Once the program is done running, the result will be shown in the "Out" variable.
 
