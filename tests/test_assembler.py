@@ -13,7 +13,7 @@ from desmos_compiler.assembler import assemble
         ("list", [4, 3, 2], 2),
     ],
 )
-def test_js_runner(driver, output_type, out, done):
+def test_js_runner(driver, output_type, out, done, local_desmos_url):
     assembly = rf"""
     line OUT \to IN, NEXTLINE
     line GOTO label
@@ -23,7 +23,11 @@ def test_js_runner(driver, output_type, out, done):
     js = assemble(assembly)
 
     program_output = run_program_js(
-        driver=driver, desmos_js=js, program_input=str(out), output_type=output_type
+        driver=driver,
+        desmos_js=js,
+        desmos_url=local_desmos_url,
+        program_input=str(out),
+        output_type=output_type,
     )
     assert program_output.exit_code == done
     assert program_output.output == out
@@ -47,7 +51,7 @@ def collatz_assembly_program():
 
 
 @pytest.mark.parametrize("program_input", [1, 3, 7])
-def test_assembler(driver, collatz_assembly_program, program_input):
+def test_assembler(driver, collatz_assembly_program, program_input, local_desmos_url):
     """
     Ensure `DesmosImplementation.generate_exprs` functions correctly
     on an assembly program
@@ -55,7 +59,10 @@ def test_assembler(driver, collatz_assembly_program, program_input):
     js = assemble(collatz_assembly_program)
 
     program_output = run_program_js(
-        driver=driver, desmos_js=js, program_input=program_input
+        driver=driver,
+        desmos_js=js,
+        desmos_url=local_desmos_url,
+        program_input=program_input,
     )
     assert program_output.exit_code == 0
 

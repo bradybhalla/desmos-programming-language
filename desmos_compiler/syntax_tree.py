@@ -6,6 +6,10 @@ def indent(s: str, levels: int = 1):
     return "\n".join(["    " * levels + i for i in s.split("\n")])
 
 
+"""
+Language dataclasses
+"""
+
 @dataclass(frozen=True)
 class DesmosType:
     """Type (of a variable, parameter, or function return)"""
@@ -209,3 +213,17 @@ class FunctionCallStatement(Statement):
 
     def __repr__(self) -> str:
         return f"{self.call};"
+
+"""
+Optimization dataclasses
+"""
+
+@dataclass(frozen=True)
+class DirectExpression(Expression):
+    """
+    Contains an expression which can be
+    completely evaluated directly (no function
+    calls or modified vars). This includes
+    all child nodes in the expression.
+    """
+    expr: Expression

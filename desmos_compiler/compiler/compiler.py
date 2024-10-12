@@ -1,6 +1,5 @@
-from dataclasses import dataclass
-from typing import List
-
+from desmos_compiler.compiler.globals import CURRENT_STACK_BASE_PTR, RETURN_LINES, RETURN_VAL, SIZEOF, STACK, STACK_BASE_PTRS, CompilerError, FuncInfo
+from desmos_compiler.compiler.variable_scope import StackVariableScope
 from desmos_compiler.syntax_tree import (
     Assignment,
     BinaryOperation,
@@ -19,115 +18,6 @@ from desmos_compiler.syntax_tree import (
     Variable,
     While,
 )
-
-
-# stack memory
-STACK = "S_{tack}"
-
-# pointers to stack frame bases
-STACK_BASE_PTRS = "S_{tackPtrs}"
-CURRENT_STACK_BASE_PTR = rf"{STACK_BASE_PTRS}\left[\operatorname{{length}}\left({STACK_BASE_PTRS}\right)\right]"
-
-# register to store return value
-RETURN_VAL = "R_{eturnVal}"
-
-# lines to jump back to on "return"
-RETURN_LINES = "R_{eturnLines}"
-
-# sizes of variables
-SIZEOF = {DesmosType("num"): 1}
-
-
-class CompilerError(Exception):
-    pass
-
-
-@dataclass
-class VarInfo:
-    mem_offset: int
-    var_type: DesmosType
-
-
-@dataclass
-class FuncInfo:
-    goto_label: str
-    definition: FunctionDefinition
-
-
-class StackVariableScope:
-    def __init__(self, parent: "StackVariableScope | None", variable_scope_base: str):
-        self._parent_scope = parent
-        self._variable_scope_base = variable_scope_base
-        self._var_lookup: dict[Variable, VarInfo] = {}
-        self._total_offset = 0
-
-    def get_child_scope_base(self):
-        return f"{self._variable_scope_base} + {self._total_offset}"
-
-    def get_scope_base(self):
-        return self._variable_scope_base
-
-    def add_var_asm(self, var: Variable, var_type: DesmosType):
-        """
-        Returns desmos assembly which adds a variable to the stack.
-        """
-        if var in self._var_lookup:
-            raise CompilerError(f"Variable {var} is already declared")
-
-        self._var_lookup[var] = VarInfo(self._total_offset, var_type)
-        self._total_offset += SIZEOF[var_type]
-
-        return f"line {STACK}\\to\\operatorname{{join}}\\left({STACK},\\left[1...{SIZEOF[var_type]}\\right]\\cdot0\\right), NEXTLINE\n"
-
-    def get_var_data_expr(self, var: Variable) -> tuple[str, DesmosType]:
-        """
-        Get a desmos expression for the variable data.
-
-        Returns:
-        expr -- a desmos expression which evaluates to a list containing the data
-        type -- a DesmosType of the variable
-        """
-        if not var in self._var_lookup:
-            if self._parent_scope is not None:
-                return self._parent_scope.get_var_data_expr(var)
-            else:
-                raise CompilerError(f"Variable {var} is not in scope")
-
-        offset = self._var_lookup[var].mem_offset
-        var_type = self._var_lookup[var].var_type
-        slice_start = f"{self._variable_scope_base} + {offset}"
-        slice_end = f"{self._variable_scope_base} + {offset} + {SIZEOF[var_type] - 1}"
-        return f"{STACK}[{slice_start} ... {slice_end}]", var_type
-
-    @staticmethod
-    def _set_var_expr(start, end, expr):
-        return (
-            rf"\operatorname{{join}}\left(\left\{{{start}=1:\left[\right]"
-            + rf",{STACK}\left[1...{start}-1\right]\right\}},{expr},\left"
-            + rf"\{{{end}=\operatorname{{length}}\left({STACK}\right):\left"
-            + rf"[\right],{STACK}\left[{end}+1...\right]\right\}}\right)"
-        )
-
-    def set_var_asm(self, var: Variable, desmos_expr: str) -> str:
-        if not var in self._var_lookup:
-            if self._parent_scope is not None:
-                return self._parent_scope.set_var_asm(var, desmos_expr)
-            else:
-                raise CompilerError(f"Variable {var} is not in scope")
-
-        offset = self._var_lookup[var].mem_offset
-        var_type = self._var_lookup[var].var_type
-        slice_start = f"{self._variable_scope_base} + {offset}"
-        slice_end = f"{self._variable_scope_base} + {offset} + {SIZEOF[var_type] - 1}"
-        new_stack_expr = self._set_var_expr(slice_start, slice_end, desmos_expr)
-        return f"line {STACK} \\to {new_stack_expr}, NEXTLINE\n"
-
-    def pop_scope_asm(self) -> str:
-        base = self._variable_scope_base
-        return (
-            f"line {STACK} \\to \\left\\{{{base}=1:\\left[\\right],"
-            + f"{STACK}\\left[1...{base}-1\\right]\\right\\}}, NEXTLINE\n"
-        )
 
 
 class Compiler:
@@ -176,6 +66,7 @@ class Compiler:
                 return rf"\left\{{{arg1} {op_str} {arg2}:1,0\right\}}"
             case _:
                 raise CompilerError(f"Unknown binary operator {op}")
+
 
     def eval_expression(self, expr: Expression, scope: StackVariableScope) -> None:
         """
@@ -248,6 +139,7 @@ class Compiler:
                 self.program_asm += f"line {RETURN_LINES}\\to\\operatorname{{join}}\\left({RETURN_LINES},LINE + 1\\right), GOTO {func.goto_label}\n"
             case _:
                 raise CompilerError(f"Unknown expression type {type(expr)} ({expr})")
+
 
     def compile_statement(
         self, statement: Statement, scope: StackVariableScope
@@ -335,7 +227,7 @@ class Compiler:
                 raise CompilerError(f"Unknown statement type {type(statement)}")
 
     def compile_functions(self):
-        for name, info in self.function_lookup.items():
+        for info in self.function_lookup.values():
             self.program_asm += f"label {info.goto_label}\n"
 
             func_scope = StackVariableScope(self.global_scope, CURRENT_STACK_BASE_PTR)
@@ -351,14 +243,14 @@ class Compiler:
             self.compiling_function = False
 
     def generate_assembly(self):
-        # define global variables for the program to use
-        global_vars = {
+        # define global register for the program to use
+        global_registers = {
             STACK: "[]",
             STACK_BASE_PTRS: "[-1]",
             RETURN_VAL: "0",
             RETURN_LINES: "[]",
         }
-        for i, j in global_vars.items():
+        for i, j in global_registers.items():
             self.program_asm += f"expr {i}={j}\n"
 
         # create input and output

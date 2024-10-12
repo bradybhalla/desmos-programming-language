@@ -8,20 +8,45 @@ from typing import Literal
 from time import sleep
 
 from selenium.webdriver.common.by import By
+from selenium.webdriver.firefox.service import Service as FirefoxService
+from selenium.webdriver.chrome.service import Service as ChromeService
 
 from desmos_compiler.assembler import DesmosExpr, generate_js
 
-PROJECT_ROOT = Path(__file__).parent.parent.resolve()
-DESMOS_PATH = PROJECT_ROOT / "desmos/index.html"
-CHROMEDRIVER_PATH = PROJECT_ROOT / "chromedriver"
-
-CHROME_OPTIONS = webdriver.ChromeOptions()
-CHROME_OPTIONS.add_argument("--headless")
+BROWSER = "chrome"
 
 MAX_STEPS = 1000
 
 PROG_SETUP_DELAY = 0.05
 PROG_ACTION_DELAY = 0.05
+
+def create_driver(browser, project_root, headless=False):
+    """
+    Returns webdriver
+
+    Supported: chrome, firefox
+    """
+    if browser == "chrome":
+        path = project_root / "chromedriver"
+        assert path.is_file(), "chromedriver not in expected location"
+        service = ChromeService(str(path))
+        options = webdriver.ChromeOptions()
+        if headless:
+            options.add_argument("--headless")
+        return webdriver.Chrome(service=service, options=options)
+
+    elif browser == "firefox":
+        path = project_root / "geckodriver"
+        assert path.is_file(), "geckodriver not in expected location"
+        service = FirefoxService(str(path))
+        options = webdriver.FirefoxOptions()
+        if headless:
+            options.add_argument("--headless")
+        return webdriver.Firefox(service=service, options=options)
+
+    else:
+        raise ValueError("Browser not supported")
+
 
 @dataclass
 class ProgramOutput:
@@ -35,8 +60,9 @@ class ProgramOutput:
 
 def run_program_js(
     *,
-    driver: webdriver.Chrome,
+    driver,
     desmos_js: str,
+    desmos_url: str,
     program_input: str | None = None,
     output_type: Literal["numeric", "list"] = "numeric",
 ) -> ProgramOutput:
@@ -46,22 +72,22 @@ def run_program_js(
     Arguments:
     `driver` -- the webdriver to use
     `desmos_js` -- javascript to generate desmos expressions
+    `desmos_url` -- url to desmos instance
     `program_input` -- sets the "in" expression if provided
     `output_type` -- either "numeric" or "list" depending on the type of the "out" expression
 
     Returns the program result as a `ProgramOutput` object.
     """
-    print(desmos_js)
-    driver.get("file://" + str(DESMOS_PATH))
+    driver.get(desmos_url)
 
     # create expressions
-    driver.execute_script(desmos_js)
+    driver.execute_script("window." + desmos_js)
     sleep(PROG_SETUP_DELAY)
 
     # set input if provided
     if program_input is not None:
         driver.execute_script(
-            generate_js([DesmosExpr(id="in", latex=f"I_{{n}} = {program_input}")])
+            "window." + generate_js([DesmosExpr(id="in", latex=f"I_{{n}} = {program_input}")])
         )
         sleep(PROG_ACTION_DELAY)
 
@@ -71,8 +97,8 @@ def run_program_js(
     )
     driver.execute_script(
         """
-        selenium_track_output = Calc.HelperExpression({ latex: 'O_{ut}' });
-        selenium_track_done = Calc.HelperExpression({ latex: 'D_{one}' });
+        window.selenium_track_output = window.Calc.HelperExpression({ latex: 'O_{ut}' });
+        window.selenium_track_done = window.Calc.HelperExpression({ latex: 'D_{one}' });
         """
     )
     sleep(PROG_ACTION_DELAY)
@@ -93,6 +119,6 @@ def run_program_js(
 
     # find and return the output
     return ProgramOutput(
-        output=get_expr_value("selenium_track_output", output_type),
-        exit_code=get_expr_value("selenium_track_done", "numeric"),
+        output=get_expr_value("window.selenium_track_output", output_type),
+        exit_code=get_expr_value("window.selenium_track_done", "numeric"),
     )

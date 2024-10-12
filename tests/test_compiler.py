@@ -1,18 +1,21 @@
 import pytest
-from desmos_compiler.compiler import compile_syntax_tree
+from desmos_compiler.compiler.compiler import compile_syntax_tree
 from tests.utils import run_program_js
 from desmos_compiler.parser import parse
 from desmos_compiler.assembler import assemble
 
 
 @pytest.fixture
-def prog_tester(driver):
+def prog_tester(driver, local_desmos_url):
     def _ret(prog, input, expected_output):
         syntax_tree = parse(prog)
         desmos_assembly = compile_syntax_tree(syntax_tree)
         js = assemble(desmos_assembly)
         program_output = run_program_js(
-            driver=driver, desmos_js=js, program_input=str(input)
+            driver=driver,
+            desmos_js=js,
+            desmos_url=local_desmos_url,
+            program_input=str(input),
         )
         assert program_output.exit_code == 0
         assert program_output.output == expected_output
